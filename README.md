@@ -1,6 +1,4 @@
-# Segmentacja obrazu na zadane obszary tonalne (np. światła, tony pośrednie i
-cienie) i stosowanie do nich osobnych wartości progowania automatycznego z manualną
-korektą.
+# Segmentacja obrazu na zadane obszary tonalne i stosowanie do nich osobnych wartości progowania automatycznego z manualną korektą.
 
 Autorzy: Zofia Grodecka, Jan Prokop
 
