@@ -6,7 +6,8 @@ import numpy as np
 import sys
 import pathlib
 from copy import deepcopy
-from itertools import chain 
+from itertools import chain
+from PIL import Image
 
 
 def converting_to_gray_scale(file_name, show=False):
@@ -85,29 +86,56 @@ def print_by_tones(image, Tones):
             cv.imshow(f"Tone {i+1}", copy_scaled[:,:])
 
 
-def calculate_threshold(image, Tones, original):
+def apply_threshold(blurred_image, gray_image, Tones, show=False):
     N = len(Tones)
-    mask = np.zeros(image.shape[:2], np.uint8)
+    mask = np.zeros(blurred_image.shape[:2], np.uint8)
+    masked = []
+    results = []
 
     for i in range(N):
         for (x, y) in Tones[i]:
             mask[x, y] = 255
-        masked_img = cv.bitwise_and(original, original, mask=mask)
-        otsu_threshold, image_result = cv.threshold(masked_img, 0, 255, cv.THRESH_TOZERO + cv.THRESH_OTSU)
-        # cv.imshow(f"Mask {i + 1}", mask)
-        masked_img_scaled = cv.resize(masked_img, None, fx=0.6, fy=0.6, interpolation = cv.INTER_LINEAR)
-        cv.imshow(f"Masked image {i + 1}", masked_img_scaled)
-        """if i == N-2:
-            change_threshold(masked_img, 200)"""
-        print(f"Threshold value for {i+1} tone: {otsu_threshold}")
-        image_result_scaled = cv.resize(image_result, None, fx=0.6, fy=0.6, interpolation = cv.INTER_LINEAR)
-        cv.imshow(f"Tone {i + 1} after threshold", image_result_scaled)
-        mask = np.zeros(image.shape[:2], np.uint8)
+        masked_img = cv.bitwise_and(gray_image, gray_image, mask=mask)
+        otsu_threshold, image_result = cv.threshold(masked_img, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
+        # image_result = Image.fromarray(image_result.astype(np.uint8))
+        # image_result = image_result.tobitmap()
+        masked.append(masked_img)
+        print(f"Threshold value for {i + 1} tone: {otsu_threshold}")
+        if show:
+            cv.imshow(f"Mask {i + 1}", mask)
+            masked_img_scaled = cv.resize(masked_img, None, fx=0.6, fy=0.6, interpolation = cv.INTER_LINEAR)
+            cv.imshow(f"Masked image {i + 1}", masked_img_scaled)
+            image_result_scaled = cv.resize(image_result, None, fx=0.6, fy=0.6, interpolation = cv.INTER_LINEAR)
+            image = np.array(image_result)
+            cv.imshow(f"Tone {i + 1} after threshold", image)
+        results.append(image_result)
+        mask = np.zeros(blurred_image.shape[:2], np.uint8)
+    return masked, results
 
 
-def change_threshold(image, new_value):
+def change_threshold(image, new_value, show=False):
     threshold, image_result = cv.threshold(image, new_value, 255, cv.THRESH_TOZERO)
-    cv.imshow("After change of threshold", image_result)
+    if show:
+        cv.imshow("After change of threshold", image_result)
+    return image_result
+
+
+def merge_pictures(results):
+    n = len(results)
+
+    if n < 2:
+        image_result = Image.fromarray(results[0].astype(np.uint8))
+        image_result = image_result.tobitmap()
+        return image_result
+
+    merged = cv.bitwise_or(results[0], results[1])
+    # cv.imshow(f"Tones {1, 2} after merge", merged)
+    for i in range(2, len(results)):
+        merged = cv.bitwise_or(merged, results[i])
+        # cv.imshow(f"Tones {i+1} after merge", merged)
+
+    image_result = Image.fromarray(merged.astype(np.uint8))
+    return image_result
 
 
 if __name__ == "__main__":
@@ -122,7 +150,10 @@ if __name__ == "__main__":
     gaussed = gaussian_blurring(gray, show=False)
     Tones = split_into_tones(gaussed, brackets=gray_scale_div, show=True)
 
-    calculate_threshold(gaussed, Tones, gray)
+    masked, thresholded = apply_threshold(gaussed, gray, Tones, show=False)
+
+    result = merge_pictures(thresholded)
+    result.save("result.tif")
 
     cv.waitKey()
  
