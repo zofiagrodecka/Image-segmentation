@@ -7,7 +7,7 @@ Program ma być aplikacją okienkową pozwalającą na:
 - Wykrywanie i wyznaczanie obszarów tonalnych o różnych średnich poziomach szarości/jasności.
 - Możliwość korekty wybranych obszarów tonalnych przez użytkownika
 - Obliczanie progu dla każdego z wyznaczonych obszarów
-- -Manualną opcję zmiany wartości tej bramki/progu.
+- Manualną opcję zmiany wartości tej bramki/progu.
 - Zastosowanie wyliczonego progowania odpowiednio dla wszystkich obszarów tonalnych.
 - Pokazanie efektu końcowego przy obecnych ustawieniach
 - Eksport plików (do wybranego katalogu)
