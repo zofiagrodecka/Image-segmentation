@@ -169,15 +169,15 @@ if __name__ == "__main__":
     cv.waitKey()
 
     # Saving result image
-    usr_want_to_save = "_"
-    while usr_want_to_save.upper() != "Y" or usr_want_to_save.upper() != "N":
-        usr_want_to_save = input("Do you want to save the result? [Y/n]:\n> ") 
+    usr_wants_to_save = "_"
+    while usr_wants_to_save.upper() != "Y" or usr_wants_to_save.upper() != "N":
+        usr_wants_to_save = input("Do you want to save the result? [Y/n]:\n> ") 
         
-        if usr_want_to_save.upper() == "Y":
+        if usr_wants_to_save.upper() == "Y":
             result_file_name = input("Put result file name:\n> ")
             result.save(f"Results/{result_file_name}")
             break
-        elif usr_want_to_save.upper() == "N":
+        elif usr_wants_to_save.upper() == "N":
             break
         else:
             print("Wrong response character!")
