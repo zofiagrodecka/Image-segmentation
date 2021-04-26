@@ -24,9 +24,10 @@ Tydzień 1-4: (3, 4 laby)
 - Możliwość manualnej zmiany progowania | Zofia
 
 Tydzień 5-7: (5 laby)
-- Wyświetlanie kroków w aplikacji okienkowej | Zofia-
+- Wyświetlanie kroków w aplikacji okienkowej | Zofia
 - Dodanie interfejsu pokazującego wybrane obszary i np. suwak z wyboremwartości progowania. | Zofia / Jasiek
 - Dodanie wygodnego sposobu wybierania plików i miejsca na eksport. | Jasiek
-- Tydzień 8+:
+
+Tydzień 8+:
 - Pewnie czegoś nie zrobimy na czas, więc to jest bufor :D
 - Poprawa programu zależnie od feedbacku
