@@ -141,12 +141,12 @@ def merge_pictures(results, show=False):
         merged = cv.bitwise_or(merged, results[i])
         # cv.imshow(f"Tones {i+1} after merge", merged)
 
-    image_result = Image.fromarray(merged.astype(np.uint8))
+    # image_result = Image.fromarray(merged.astype(np.uint8))
 
     if show:
         cv.imshow("Result", merged)
 
-    return image_result
+    return merged
 
 
 if __name__ == "__main__":
