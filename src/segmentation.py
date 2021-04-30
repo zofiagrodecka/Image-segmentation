@@ -6,12 +6,11 @@ import numpy as np
 import sys
 import pathlib
 from copy import deepcopy
-from itertools import chain
 from PIL import Image
 from numpy import ma
 from skimage.filters import threshold_otsu
 
-BLUR_PARAM = 41
+BLUR_PARAM = 0
 
 
 def converting_to_gray_scale(file_name, show=False):
@@ -29,7 +28,7 @@ def converting_to_gray_scale(file_name, show=False):
 
 
 def gaussian_blurring(image, show=False):
-    gaussed = cv.GaussianBlur(image, (BLUR_PARAM,BLUR_PARAM), cv.BORDER_DEFAULT)
+    gaussed = cv.GaussianBlur(image, (BLUR_PARAM, BLUR_PARAM), 10, 10, borderType=0)
 
     if show:
         cv.imshow('BLURRED', gaussed)
@@ -39,21 +38,21 @@ def gaussian_blurring(image, show=False):
 
 def split_into_tones(image, show=False, brackets=[]):
     
-    # Prepering shade sections
+    # Preparing shade sections
     division = [0]
     if len(brackets) != 0:
         for i in brackets:
             division.append(i)
     division.append(255)
-    print(division)
+    # print(division)
 
     if len(division) == 2:  # DEFAULT: For now I break the intensity into 5 equal sections
-        Tones = [ [] for i in range(5) ]
+        Tones = [[] for i in range(5)]
 
         for y in range(image.shape[1]):
             for x in range(image.shape[0]):
                 intensity = image[x, y]
-                Tones[ intensity//51 ].append([x,y])
+                Tones[intensity//51].append([x, y])
 
         if show:
             print_by_tones(image, Tones, [0, 51, 102, 153, 204, 255])
@@ -61,7 +60,7 @@ def split_into_tones(image, show=False, brackets=[]):
         return Tones
 
     else:  # with user-described sections of gray spectrum
-        Tones = [ [] for i in range( len(division) - 1 ) ]
+        Tones = [[] for i in range(len(division) - 1)]
 
         for y in range(image.shape[1]):
             for x in range(image.shape[0]):
@@ -69,7 +68,7 @@ def split_into_tones(image, show=False, brackets=[]):
 
                 for i in range(1,len(division)):
                     if division[i-1] <= intensity <= division[i]:
-                        Tones[i-1].append([x,y])
+                        Tones[i-1].append([x, y])
                         break
 
         if show:
@@ -107,19 +106,21 @@ def apply_threshold(blurred_image, gray_image, Tones, show=False):
         masked_img = cv.bitwise_and(gray_image, gray_image, mask=mask)
 
         thr_masked = ma.masked_array(masked_img, mask == 0)  # w masce z np. sa 1 tam gdzie sa 0 (czern) w mask
-        threshold_value = threshold_otsu(thr_masked.compressed())
-        threshold, image_result = cv.threshold(masked_img, threshold_value, 255, cv.THRESH_BINARY)
 
-        masked.append(masked_img)
-        results.append(image_result)
-        if show:
-            cv.imshow(f"Mask {i + 1}", mask)
-            masked_img_scaled = cv.resize(masked_img, None, fx=0.6, fy=0.6, interpolation = cv.INTER_LINEAR)
-            cv.imshow(f"Masked image {i + 1}", masked_img_scaled)
-            image_result_scaled = cv.resize(image_result, None, fx=0.6, fy=0.6, interpolation = cv.INTER_LINEAR)
-            image = np.array(image_result)
-            cv.imshow(f"Tone {i + 1} after threshold", image)
-        mask = np.zeros(blurred_image.shape[:2], np.uint8)
+        if thr_masked.compressed().shape[0] != 0:  # Brute force rozwiązanie problemu xd
+            threshold_value = threshold_otsu(thr_masked.compressed())
+            threshold, image_result = cv.threshold(masked_img, threshold_value, 255, cv.THRESH_BINARY)
+
+            masked.append(masked_img)
+            results.append(image_result)
+            if show:
+                cv.imshow(f"Mask {i + 1}", mask)
+                masked_img_scaled = cv.resize(masked_img, None, fx=0.6, fy=0.6, interpolation=cv.INTER_LINEAR)
+                cv.imshow(f"Masked image {i + 1}", masked_img_scaled)
+                # image_result_scaled = cv.resize(image_result, None, fx=0.6, fy=0.6, interpolation=cv.INTER_LINEAR)
+                image = np.array(image_result)
+                cv.imshow(f"Tone {i + 1} after threshold", image)
+            mask = np.zeros(blurred_image.shape[:2], np.uint8)
     return masked, results
 
 
@@ -157,37 +158,40 @@ def convert_from_array(image):
 if __name__ == "__main__":
 
     # Getting input from usr
-    file_name = sys.argv[1]
-    gray_scale_div = []
-    for i in range(2, len(sys.argv)):
-        parameter = sys.argv[i]
-        gray_scale_div.append(int(parameter))
+    if len(sys.argv) < 2:
+        print("This program needs arguments: Photo_FILEname(obligatory), [Thresholds](optional)")
 
-    # Converting image
-    gray = converting_to_gray_scale(file_name, show=True)
+    else:
+        file_name = sys.argv[1]
+        gray_scale_div = []
+        for i in range(2, len(sys.argv)):
+            parameter = sys.argv[i]
+            gray_scale_div.append(int(parameter))
 
-    gaussed = gaussian_blurring(gray, show=False)
+        # Converting image
+        gray = converting_to_gray_scale(file_name, show=True)
 
-    Tones = split_into_tones(gaussed, brackets=gray_scale_div, show=False)
+        gaussed = gaussian_blurring(gray, show=True)
 
-    masked, thresholded = apply_threshold(gaussed, gray, Tones, show=False)
+        Tones = split_into_tones(gaussed, brackets=gray_scale_div, show=False)
 
-    result = merge_pictures(thresholded, show=True)
-    no_array_result = convert_from_array(result)
+        masked, thresholded = apply_threshold(gaussed, gray, Tones, show=False)
 
-    cv.waitKey()
+        result = merge_pictures(thresholded, show=True)
 
-    # Saving result image
-    usr_wants_to_save = "_"
-    while usr_wants_to_save.upper() != "Y" or usr_wants_to_save.upper() != "N":
-        usr_wants_to_save = input("Do you want to save the result? [Y/n]:\n> ")
+        cv.waitKey()
+        cv.destroyAllWindows()
 
-        if usr_wants_to_save.upper() == "Y":
-            result_file_name = input("Put result file name:\n> ")
-            no_array_result.save(f"Results/{result_file_name}")
-            break
-        elif usr_wants_to_save.upper() == "N":
-            break
-        else:
-            print("Wrong response character!")
- 
+        # Saving result image
+        usr_wants_to_save = "_"
+        while usr_wants_to_save.upper() != "Y" or usr_wants_to_save.upper() != "N":
+            usr_wants_to_save = input("Do you want to save the result? [Y/n]:\n> ")
+
+            if usr_wants_to_save.upper() == "Y":
+                result_file_name = input("Put result file name:\n> ")
+                cv.imwrite(f"Results/result_file_name", result, [cv.IMWRITE_PNG_BILEVEL, 1])
+                break
+            elif usr_wants_to_save.upper() == "N":
+                break
+            else:
+                print("Wrong response character!")
