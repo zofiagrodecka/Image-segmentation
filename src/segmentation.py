@@ -8,6 +8,8 @@ import pathlib
 from copy import deepcopy
 from itertools import chain
 from PIL import Image
+from numpy import ma
+from skimage.filters import threshold_otsu
 
 BLUR_PARAM = 41
 
@@ -103,11 +105,13 @@ def apply_threshold(blurred_image, gray_image, Tones, show=False):
         for (x, y) in Tones[i]:
             mask[x, y] = 255
         masked_img = cv.bitwise_and(gray_image, gray_image, mask=mask)
-        otsu_threshold, image_result = cv.threshold(masked_img, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
-        # image_result = Image.fromarray(image_result.astype(np.uint8))
-        # image_result = image_result.tobitmap()
+
+        thr_masked = ma.masked_array(masked_img, mask == 0)  # w masce z np. sa 1 tam gdzie sa 0 (czern) w mask
+        threshold_value = threshold_otsu(thr_masked.compressed())
+        threshold, image_result = cv.threshold(masked_img, threshold_value, 255, cv.THRESH_BINARY)
+
         masked.append(masked_img)
-        print(f"Threshold value for {i + 1} tone: {otsu_threshold}")
+        results.append(image_result)
         if show:
             cv.imshow(f"Mask {i + 1}", mask)
             masked_img_scaled = cv.resize(masked_img, None, fx=0.6, fy=0.6, interpolation = cv.INTER_LINEAR)
@@ -115,13 +119,12 @@ def apply_threshold(blurred_image, gray_image, Tones, show=False):
             image_result_scaled = cv.resize(image_result, None, fx=0.6, fy=0.6, interpolation = cv.INTER_LINEAR)
             image = np.array(image_result)
             cv.imshow(f"Tone {i + 1} after threshold", image)
-        results.append(image_result)
         mask = np.zeros(blurred_image.shape[:2], np.uint8)
     return masked, results
 
 
 def change_threshold(image, new_value, show=False):
-    threshold, image_result = cv.threshold(image, new_value, 255, cv.THRESH_TOZERO)
+    threshold, image_result = cv.threshold(image, new_value, 255, cv.THRESH_BINARY)
     if show:
         cv.imshow("After change of threshold", image_result)
     return image_result
@@ -141,12 +144,14 @@ def merge_pictures(results, show=False):
         merged = cv.bitwise_or(merged, results[i])
         # cv.imshow(f"Tones {i+1} after merge", merged)
 
-    # image_result = Image.fromarray(merged.astype(np.uint8))
-
     if show:
         cv.imshow("Result", merged)
 
     return merged
+
+
+def convert_from_array(image):
+    return Image.fromarray(image.astype(np.uint8))
 
 
 if __name__ == "__main__":
@@ -163,11 +168,12 @@ if __name__ == "__main__":
 
     gaussed = gaussian_blurring(gray, show=False)
 
-    Tones = split_into_tones(gaussed, brackets=gray_scale_div, show=True)
+    Tones = split_into_tones(gaussed, brackets=gray_scale_div, show=False)
 
     masked, thresholded = apply_threshold(gaussed, gray, Tones, show=False)
 
     result = merge_pictures(thresholded, show=True)
+    no_array_result = convert_from_array(result)
 
     cv.waitKey()
 
@@ -178,7 +184,7 @@ if __name__ == "__main__":
 
         if usr_wants_to_save.upper() == "Y":
             result_file_name = input("Put result file name:\n> ")
-            result.save(f"Results/{result_file_name}")
+            no_array_result.save(f"Results/{result_file_name}")
             break
         elif usr_wants_to_save.upper() == "N":
             break
