@@ -99,6 +99,7 @@ def apply_threshold(blurred_image, gray_image, Tones, show=False):
     mask = np.zeros(blurred_image.shape[:2], np.uint8)
     masked = []
     results = []
+    threshold_values = []
 
     for i in range(N):
         for (x, y) in Tones[i]:
@@ -108,9 +109,10 @@ def apply_threshold(blurred_image, gray_image, Tones, show=False):
         thr_masked = ma.masked_array(masked_img, mask == 0)  # w masce z np. sa 1 tam gdzie sa 0 (czern) w mask
 
         if thr_masked.compressed().shape[0] != 0:  # Brute force rozwiązanie problemu xd
-            threshold_value = threshold_otsu(thr_masked.compressed())
+            value = threshold_otsu(thr_masked.compressed())
+            threshold_values.append(value)
             # print(f"tone: {i+1}, threshold: {threshold_value}")
-            threshold, image_result = cv.threshold(masked_img, threshold_value, 255, cv.THRESH_BINARY)
+            threshold, image_result = cv.threshold(masked_img, value, 255, cv.THRESH_BINARY)
 
             masked.append(masked_img)
             results.append(image_result)
@@ -121,7 +123,7 @@ def apply_threshold(blurred_image, gray_image, Tones, show=False):
                 image_result_scaled = cv.resize(image_result, None, fx=0.6, fy=0.6, interpolation=cv.INTER_LINEAR)
                 cv.imshow(f"Tone {i + 1} after threshold", image_result_scaled)
             mask = np.zeros(blurred_image.shape[:2], np.uint8)
-    return masked, results
+    return masked, threshold_values, results
 
 
 def change_threshold(image, new_value, show=False):
@@ -175,7 +177,7 @@ if __name__ == "__main__":
 
         Tones = split_into_tones(gaussed, brackets=gray_scale_div, show=False)
 
-        masked, thresholded = apply_threshold(gaussed, gray, Tones, show=True)
+        masked, values, thresholded = apply_threshold(gaussed, gray, Tones, show=True)
 
         result = merge_pictures(thresholded, show=True)
 

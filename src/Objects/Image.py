@@ -18,10 +18,13 @@ class Image:
         self.gray = self.convert_to_gray_scale()
         self.gaussed = gaussian_blurring(self.gray)
         self.tones = split_into_tones(self.gaussed, brackets=divisions)
-        self.masked, self.thresholded = apply_threshold(self.gaussed, self.gray, self.tones)  # listy
+        self.masked, self.threshold_values, self.thresholded = apply_threshold(self.gaussed, self.gray, self.tones)  # listy
         self.result = merge_pictures(self.thresholded)
         self.n_segments = len(self.thresholded)
 
     def convert_to_gray_scale(self):
         return cv.cvtColor(self.cv_image, cv.COLOR_BGR2GRAY)
+
+    def update_result(self):
+        self.result = merge_pictures(self.thresholded)
 
