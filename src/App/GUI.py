@@ -1,8 +1,8 @@
 from PyQt5 import QtGui
-from PyQt5.QtWidgets import QWidget, QLabel, QGridLayout, QToolButton, QSlider
+from PyQt5.QtWidgets import QWidget, QLabel, QGridLayout, QToolButton, QSlider, QPushButton
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import Qt, pyqtSlot
-
+import copy
 from src.segmentation import change_threshold
 
 
@@ -19,11 +19,13 @@ class MainWindow(QWidget):
 
         self.left_button = QToolButton()
         self.right_button = QToolButton()
+        self.reset_button = QPushButton('Reset')
 
         self.displayed_segment_index = 0
         self.image_label = QLabel(self)
         self.result_image_label = QLabel(self)
         self.image = image
+        self.initial_image = copy.deepcopy(image)
         self.qt_image = self.convert_cv_qt(self.image.thresholded[self.displayed_segment_index])
         self.res_image = self.convert_cv_qt(self.image.result)
 
@@ -44,6 +46,7 @@ class MainWindow(QWidget):
         self.layout.addWidget(self.image_label, 2, 0, 1, 2)  # w k ( row span, col span)
         self.layout.addWidget(self.result_image_label, 2, 2, 1, 2)
         self.layout.addWidget(self.threshold_slider, 3, 0, 1, 2)
+        self.layout.addWidget(self.reset_button, 4, 0)
         self.setLayout(self.layout)
 
     def initialize_buttons(self):
@@ -53,6 +56,8 @@ class MainWindow(QWidget):
         self.right_button.setToolTip('Next segment')
         self.right_button.setArrowType(Qt.RightArrow)
         self.right_button.clicked.connect(self.right_on_click)
+        self.reset_button.setToolTip('Reset settings')
+        self.reset_button.clicked.connect(self.reset_calculations)
 
     def initialize_slider(self):
         self.threshold_slider.setRange(0, 255)
@@ -87,11 +92,10 @@ class MainWindow(QWidget):
         before_change = self.image.masked[self.displayed_segment_index]
         changed_image = change_threshold(before_change, value)
         self.image.thresholded[self.displayed_segment_index] = changed_image
-        self.update_image(self.image.thresholded[self.displayed_segment_index])
+        self.update_image(self.qt_image, self.image.thresholded[self.displayed_segment_index], self.image_label)
         self.image.threshold_values[self.displayed_segment_index] = value
         self.image.update_result()
-        self.res_image = self.convert_cv_qt(self.image.result)
-        self.result_image_label.setPixmap(self.res_image)
+        self.update_image(self.res_image, self.image.result, self.result_image_label)
 
     def prev_segment_index(self):
         return self.displayed_segment_index-1
@@ -99,6 +103,13 @@ class MainWindow(QWidget):
     def next_segment_index(self):
         return self.displayed_segment_index+1
 
-    def update_image(self, new_image):
-        self.qt_image = self.convert_cv_qt(new_image)
-        self.image_label.setPixmap(self.qt_image)
+    def update_image(self, old_image, new_image, label):
+        old_image = self.convert_cv_qt(new_image)
+        label.setPixmap(old_image)
+
+    @pyqtSlot()
+    def reset_calculations(self):
+        self.image.thresholded[self.displayed_segment_index] = self.initial_image.thresholded[self.displayed_segment_index]
+        self.change_threshold_value(self.initial_image.threshold_values[self.displayed_segment_index])
+        self.threshold_slider.setValue(self.image.threshold_values[self.displayed_segment_index])
+
