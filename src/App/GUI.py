@@ -1,5 +1,5 @@
 from PyQt5 import QtGui
-from PyQt5.QtWidgets import QWidget, QLabel, QGridLayout, QToolButton, QSlider, QPushButton
+from PyQt5.QtWidgets import QWidget, QLabel, QGridLayout, QToolButton, QSlider, QPushButton, QApplication
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import Qt, pyqtSlot
 import copy
@@ -10,8 +10,9 @@ class MainWindow(QWidget):
     def __init__(self, image):
         super().__init__()
         self.setWindowTitle("Image segmentation")
-        self.display_width = 640
-        self.display_height = 480
+        self.desktop = QApplication.desktop()
+        self.display_width = self.desktop.screenGeometry().width()/2
+        self.display_height = self.desktop.screenGeometry().height()/2
         self.x = 20
         self.y = 40
         self.height = self.display_height + 10
@@ -46,7 +47,7 @@ class MainWindow(QWidget):
         self.layout.addWidget(self.image_label, 2, 0, 1, 2)  # w k ( row span, col span)
         self.layout.addWidget(self.result_image_label, 2, 2, 1, 2)
         self.layout.addWidget(self.threshold_slider, 3, 0, 1, 2)
-        self.layout.addWidget(self.reset_button, 4, 0)
+        self.layout.addWidget(self.reset_button, 4, 0, Qt.AlignCenter)
         self.setLayout(self.layout)
 
     def initialize_buttons(self):
