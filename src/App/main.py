@@ -11,7 +11,7 @@ if __name__ == "__main__":
         parameter = sys.argv[i]
         gray_scale_div.append(int(parameter))
 
-    image = Image(file_name, gray_scale_div)
+    image = Image(file_name)
 
     app = QApplication([])
     window = MainWindow(image)
