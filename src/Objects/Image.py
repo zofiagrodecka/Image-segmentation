@@ -24,6 +24,7 @@ class Image:
         self.thresholded = []
         self.result = None
         self.n_segments = 0
+        self.has_applied_segmentation = False
 
     def set_divisions(self, divisions):
         self.divisions = divisions
@@ -37,6 +38,7 @@ class Image:
             self.masked, self.threshold_values, self.thresholded = apply_threshold(self.blurred, self.gray, self.tones)  # listy
             self.result = merge_pictures(self.thresholded)
             self.n_segments = len(self.thresholded)
+            self.has_applied_segmentation = True
 
     def update_result(self):
         self.result = merge_pictures(self.thresholded)
