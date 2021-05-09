@@ -1,11 +1,10 @@
 from PyQt5 import QtGui
 from PyQt5.QtWidgets import QWidget, QLabel, QGridLayout, QToolButton, QSlider, QPushButton, QApplication, QLineEdit
 from PyQt5.QtGui import QPixmap, QFont
-from PyQt5.QtCore import Qt, pyqtSlot
+from PyQt5.QtCore import Qt
 import copy
-from src.segmentation import change_threshold
-import tkinter.filedialog  #import askopenfilename
-from tkinter import Tk
+from src.App.segmentation import change_threshold
+import tkinter.filedialog
 import cv2 as cv
 
 
@@ -97,9 +96,9 @@ class MainWindow(QWidget):
         return QPixmap.fromImage(p)
 
     def get_input(self):
-        print(self.input.text())
+        # print(self.input.text())
         segments = [int(i) for i in self.input.text().split(' ')]
-        print(segments)
+        # print(segments)
         self.image.set_divisions(segments)
         self.image.apply_segmentation()
         self.initial_image = copy.deepcopy(self.image)
@@ -123,7 +122,7 @@ class MainWindow(QWidget):
             self.threshold_slider.setValue(self.image.threshold_values[self.displayed_segment_index])
 
     def change_threshold_value(self, value):
-        print(value)
+        # print(value)
         before_change = self.image.masked[self.displayed_segment_index]
         changed_image = change_threshold(before_change, value)
         self.image.thresholded[self.displayed_segment_index] = changed_image
@@ -148,6 +147,7 @@ class MainWindow(QWidget):
         self.threshold_slider.setValue(self.image.threshold_values[self.displayed_segment_index])
 
     def save_result(self):
-        f = tkinter.filedialog.asksaveasfile(mode='w', defaultextension='bmp', initialdir="./")
-        cv.imwrite(f.name, self.image.result, [cv.IMWRITE_PNG_BILEVEL, 1])
-        f.close()
+        f = tkinter.filedialog.asksaveasfile(mode='wb', defaultextension='png', initialdir="../Results")
+        if f is not None:
+            cv.imwrite(f.name, self.image.result, [cv.IMWRITE_PNG_BILEVEL, 1])
+            f.close()
