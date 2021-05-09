@@ -7,7 +7,7 @@ from src.segmentation import change_threshold
 
 
 class MainWindow(QWidget):
-    def __init__(self, images):
+    def __init__(self, image):
         super().__init__()
         self.setWindowTitle("Image segmentation")
         """self.palette = self.palette()
@@ -31,18 +31,14 @@ class MainWindow(QWidget):
         self.left_button = QToolButton()
         self.right_button = QToolButton()
         self.reset_button = QPushButton('Reset')
-        self.left_button_result = QToolButton()
-        self.right_button_result = QToolButton()
 
-        self.image_index = 0
         self.displayed_segment_index = 0
         self.image_label = QLabel(self)
         self.result_image_label = QLabel(self)
-        # self.image = image
-        self.images = images
-        self.initial_images = []
-        self.qt_image = self.convert_cv_qt(self.images[self.image_index].gray)
-        self.res_image = self.convert_cv_qt(self.images[self.image_index].blurred)
+        self.image = image
+        self.initial_image = None
+        self.qt_image = self.convert_cv_qt(self.image.gray)
+        self.res_image = self.convert_cv_qt(self.image.blurred)
 
         self.threshold_slider = QSlider(Qt.Horizontal)
 
@@ -63,8 +59,6 @@ class MainWindow(QWidget):
         self.layout.addWidget(self.result_label, 1, 2, 1, 2, Qt.AlignCenter)
         self.layout.addWidget(self.left_button, 2, 0, Qt.AlignRight)
         self.layout.addWidget(self.right_button, 2, 1, Qt.AlignLeft)
-        self.layout.addWidget(self.left_button_result, 2, 2, Qt.AlignRight)
-        self.layout.addWidget(self.right_button_result, 2, 3, Qt.AlignLeft)
         self.layout.addWidget(self.image_label, 3, 0, 1, 2)
         self.layout.addWidget(self.result_image_label, 3, 2, 1, 2)
         self.layout.addWidget(self.threshold_slider, 4, 0, 1, 2)
@@ -82,12 +76,6 @@ class MainWindow(QWidget):
         self.right_button.clicked.connect(self.right_on_click)
         self.reset_button.setToolTip('Reset settings')
         self.reset_button.clicked.connect(self.reset_calculations)
-        self.left_button_result.setToolTip('Next image')
-        self.left_button_result.setArrowType(Qt.LeftArrow)
-        self.left_button_result.clicked.connect(self.show_prev)
-        self.right_button_result.setToolTip('Previous image')
-        self.right_button_result.clicked.connect(self.show_next)
-        self.right_button_result.setArrowType(Qt.RightArrow)
 
     def initialize_slider(self):
         self.threshold_slider.setRange(0, 255)
@@ -105,38 +93,37 @@ class MainWindow(QWidget):
         print(self.input.text())
         segments = [int(i) for i in self.input.text().split(' ')]
         print(segments)
-        self.images[self.image_index].set_divisions(segments)
-        self.images[self.image_index].apply_segmentation()
-        image_copy = copy.deepcopy(self.images[self.image_index])
-        self.initial_images.append(image_copy)
+        self.image.set_divisions(segments)
+        self.image.apply_segmentation()
+        self.initial_image = copy.deepcopy(self.image)
         self.displayed_segment_index = 0  # ??
-        self.update_image(self.qt_image, self.images[self.image_index].thresholded[self.displayed_segment_index], self.image_label)
-        self.update_image(self.res_image, self.images[self.image_index].result, self.result_image_label)
-        self.threshold_slider.setValue(self.images[self.image_index].threshold_values[self.displayed_segment_index])
+        self.update_image(self.qt_image, self.image.thresholded[self.displayed_segment_index], self.image_label)
+        self.update_image(self.res_image, self.image.result, self.result_image_label)
+        self.threshold_slider.setValue(self.image.threshold_values[self.displayed_segment_index])
 
     def left_on_click(self):
         if self.displayed_segment_index > 0:
-            self.qt_image = self.convert_cv_qt(self.images[self.image_index].thresholded[self.prev_segment_index()])
+            self.qt_image = self.convert_cv_qt(self.image.thresholded[self.prev_segment_index()])
             self.displayed_segment_index -= 1
             self.image_label.setPixmap(self.qt_image)
-            self.threshold_slider.setValue(self.images[self.image_index].threshold_values[self.displayed_segment_index])
+            self.threshold_slider.setValue(self.image.threshold_values[self.displayed_segment_index])
 
     def right_on_click(self):
-        if self.displayed_segment_index < self.images[self.image_index].n_segments-1:  # indeksowane od 0
-            self.qt_image = self.convert_cv_qt(self.images[self.image_index].thresholded[self.next_segment_index()])
+        if self.displayed_segment_index < self.image.n_segments-1:  # indeksowane od 0
+            self.qt_image = self.convert_cv_qt(self.image.thresholded[self.next_segment_index()])
             self.displayed_segment_index += 1
             self.image_label.setPixmap(self.qt_image)
-            self.threshold_slider.setValue(self.images[self.image_index].threshold_values[self.displayed_segment_index])
+            self.threshold_slider.setValue(self.image.threshold_values[self.displayed_segment_index])
 
     def change_threshold_value(self, value):
         print(value)
-        before_change = self.images[self.image_index].masked[self.displayed_segment_index]
+        before_change = self.image.masked[self.displayed_segment_index]
         changed_image = change_threshold(before_change, value)
-        self.images[self.image_index].thresholded[self.displayed_segment_index] = changed_image
-        self.update_image(self.qt_image, self.images[self.image_index].thresholded[self.displayed_segment_index], self.image_label)
-        self.images[self.image_index].threshold_values[self.displayed_segment_index] = value
-        self.images[self.image_index].update_result()
-        self.update_image(self.res_image, self.images[self.image_index].result, self.result_image_label)
+        self.image.thresholded[self.displayed_segment_index] = changed_image
+        self.update_image(self.qt_image, self.image.thresholded[self.displayed_segment_index], self.image_label)
+        self.image.threshold_values[self.displayed_segment_index] = value
+        self.image.update_result()
+        self.update_image(self.res_image, self.image.result, self.result_image_label)
 
     def prev_segment_index(self):
         return self.displayed_segment_index-1
@@ -149,30 +136,6 @@ class MainWindow(QWidget):
         label.setPixmap(old_image)
 
     def reset_calculations(self):
-        self.images[self.image_index].thresholded[self.displayed_segment_index] = self.initial_images[self.displayed_segment_index].thresholded[self.displayed_segment_index]
-        self.change_threshold_value(self.initial_images[self.displayed_segment_index].threshold_values[self.displayed_segment_index])
-        self.threshold_slider.setValue(self.images[self.image_index].threshold_values[self.displayed_segment_index])
-
-    def set_image(self, index):
-        self.image_index = index
-        self.displayed_segment_index = 0
-        if self.images[index].has_applied_segmentation:
-            self.update_image(self.qt_image, self.images[index].thresholded[self.displayed_segment_index], self.image_label)
-            self.update_image(self.res_image, self.images[index].result, self.result_image_label)
-            self.threshold_slider.setValue(self.images[index].threshold_values[self.displayed_segment_index])
-        else:
-            self.update_image(self.qt_image, self.images[index].gray, self.image_label)
-            self.update_image(self.res_image, self.images[index].blurred, self.result_image_label)
-
-    def show_next(self):
-        print('Right click')
-        if self.image_index < len(self.images) - 1:
-            print('in if')
-            self.set_image(self.image_index + 1)
-        print('After right click')
-
-    def show_prev(self):
-        print('Left click')
-        if self.image_index > 0:
-            self.set_image(self.image_index - 1)
-        print('After left click')
+        self.image.thresholded[self.displayed_segment_index] = self.initial_image.thresholded[self.displayed_segment_index]
+        self.change_threshold_value(self.initial_image.threshold_values[self.displayed_segment_index])
+        self.threshold_slider.setValue(self.image.threshold_values[self.displayed_segment_index])

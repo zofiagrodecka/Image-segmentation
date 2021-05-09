@@ -5,18 +5,10 @@ from src.Objects.Image import Image
 
 if __name__ == "__main__":
     # Getting input from usr
-    file_names = []
-    for i in range(1, len(sys.argv)):
-        parameter = sys.argv[i]
-        file_names.append(parameter)
-
-    images = []
-    for file_name in file_names:
-        print(file_name)
-        image = Image(file_name)
-        images.append(image)
+    file_name = sys.argv[1]
+    image = Image(file_name)
 
     app = QApplication([])
-    window = MainWindow(images)
+    window = MainWindow(image)
     window.show()
     sys.exit(app.exec_())
