@@ -194,7 +194,7 @@ if __name__ == "__main__":
 
     Tones = split_into_tones(gaussed, brackets=gray_scale_div, show=False)
 
-    masked, thresholded = apply_threshold(gaussed, gray, Tones, show=False)
+    masked, values, thresholded = apply_threshold(gaussed, gray, Tones, show=False)
 
     result = merge_pictures(thresholded, show=True)
 
