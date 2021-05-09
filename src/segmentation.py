@@ -9,9 +9,8 @@ from copy import deepcopy
 from PIL import Image
 from numpy import ma
 from skimage.filters import threshold_otsu
-import tkinter.filedialog  #import askopenfilename
+import tkinter.filedialog
 from tkinter import Tk
-from os.path import abspath
 
 BLUR_PARAM = 0
 
@@ -194,7 +193,7 @@ if __name__ == "__main__":
 
     Tones = split_into_tones(gaussed, brackets=gray_scale_div, show=False)
 
-    masked, values, thresholded = apply_threshold(gaussed, gray, Tones, show=False)
+    masked, thresholded_values, thresholded = apply_threshold(gaussed, gray, Tones, show=False)
 
     result = merge_pictures(thresholded, show=True)
 
