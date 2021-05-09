@@ -9,8 +9,11 @@ def set_path(file_name):
 
 
 class Image:
-    def __init__(self, file_name):
-        self.full_path = set_path(file_name)
+    def __init__(self, file_name, explore_files=False):
+        if explore_files:
+            self.full_path = file_name
+        else:
+            self.full_path = set_path(file_name)
         self.cv_image = cv.imread(self.full_path)
         self.height = self.cv_image.shape[0]
         self.width = self.cv_image.shape[1]
