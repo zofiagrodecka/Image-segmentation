@@ -4,6 +4,9 @@ from PyQt5.QtGui import QPixmap, QFont
 from PyQt5.QtCore import Qt, pyqtSlot
 import copy
 from src.segmentation import change_threshold
+import tkinter.filedialog  #import askopenfilename
+from tkinter import Tk
+import cv2 as cv
 
 
 class MainWindow(QWidget):
@@ -31,6 +34,7 @@ class MainWindow(QWidget):
         self.left_button = QToolButton()
         self.right_button = QToolButton()
         self.reset_button = QPushButton('Reset')
+        self.save_button = QPushButton('Save')
 
         self.displayed_segment_index = 0
         self.image_label = QLabel(self)
@@ -63,6 +67,7 @@ class MainWindow(QWidget):
         self.layout.addWidget(self.result_image_label, 3, 2, 1, 2)
         self.layout.addWidget(self.threshold_slider, 4, 0, 1, 2)
         self.layout.addWidget(self.reset_button, 5, 0, 1, 2, Qt.AlignCenter)
+        self.layout.addWidget(self.save_button, 5, 2, 1, 2, Qt.AlignCenter)
         self.setLayout(self.layout)
 
     def initialize_buttons(self):
@@ -76,6 +81,8 @@ class MainWindow(QWidget):
         self.right_button.clicked.connect(self.right_on_click)
         self.reset_button.setToolTip('Reset settings')
         self.reset_button.clicked.connect(self.reset_calculations)
+        self.save_button.setToolTip('Save the result')
+        self.save_button.clicked.connect(self.save_result)
 
     def initialize_slider(self):
         self.threshold_slider.setRange(0, 255)
@@ -139,3 +146,8 @@ class MainWindow(QWidget):
         self.image.thresholded[self.displayed_segment_index] = self.initial_image.thresholded[self.displayed_segment_index]
         self.change_threshold_value(self.initial_image.threshold_values[self.displayed_segment_index])
         self.threshold_slider.setValue(self.image.threshold_values[self.displayed_segment_index])
+
+    def save_result(self):
+        f = tkinter.filedialog.asksaveasfile(mode='w', defaultextension='bmp', initialdir="./")
+        cv.imwrite(f.name, self.image.result, [cv.IMWRITE_PNG_BILEVEL, 1])
+        f.close()
