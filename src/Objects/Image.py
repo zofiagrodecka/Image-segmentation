@@ -1,6 +1,5 @@
-import pathlib
 import cv2 as cv
-from src.segmentation import *
+from src.App.segmentation import *
 
 
 def set_path(file_name):
