@@ -172,7 +172,7 @@ if __name__ == "__main__":
 
     if sys.argv[1] == "explore":
         Tk().withdraw()
-        file_name = tkinter.filedialog.askopenfilename()
+        file_name = tkinter.filedialog.askopenfilename(initialdir="./")
     else:
         file_name = sys.argv[1]
 
@@ -207,7 +207,7 @@ if __name__ == "__main__":
         if usr_wants_to_save.upper() == "Y":
             # result_file_name = input("Put result file name:\n> ")
             # cv.imwrite(f"Results/{result_file_name}", result, [cv.IMWRITE_PNG_BILEVEL, 1])
-            f = tkinter.filedialog.asksaveasfile(mode='w', defaultextension='bmp')
+            f = tkinter.filedialog.asksaveasfile(mode='w', defaultextension='bmp', initialdir="./")
             cv.imwrite(f.name, result, [cv.IMWRITE_PNG_BILEVEL, 1])
             f.close()
             break
