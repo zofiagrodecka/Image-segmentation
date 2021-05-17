@@ -12,9 +12,6 @@ class MainWindow(QWidget):
     def __init__(self, image):
         super().__init__()
         self.setWindowTitle("Image segmentation")
-        """self.palette = self.palette()
-        self.palette.setColor(self.backgroundRole(), Qt.gray)
-        self.setPalette(self.palette)"""
         self.desktop = QApplication.desktop()
         self.display_width = 640  # self.desktop.screenGeometry().width()/2
         self.display_height = 480  # self.desktop.screenGeometry().height()/2
@@ -26,8 +23,13 @@ class MainWindow(QWidget):
         self.input_label = QLabel(self)
         self.input_label.setText('Segments: ')
         self.input = QLineEdit(self)
+        self.segments = None
+        self.segments_label = QLabel(self)
+        self.segments_label.setText('Showed tones in rang: None')
         self.result_label = QLabel(self)
         self.result_label.setText('Result: ')
+        self.threshold_label = QLabel(self)
+        self.threshold_label.setText('Threshold value: None')
 
         self.ok_button = QPushButton('OK')
         self.left_button = QToolButton()
@@ -51,7 +53,7 @@ class MainWindow(QWidget):
     def initialize(self):
         self.setGeometry(self.x, self.y, self.width, self.height)
         self.input.setText("51 102 153 204")
-        self.result_label.setFont(QFont('Times', 12))
+        self.set_font_to_labels()
         self.image_label.setPixmap(self.qt_image)
         self.result_image_label.setPixmap(self.res_image)
         self.initialize_slider()
@@ -60,11 +62,13 @@ class MainWindow(QWidget):
         self.layout.addWidget(self.input, 1, 0, 1, 2)
         self.layout.addWidget(self.ok_button, 1, 2, Qt.AlignLeft)
         self.layout.addWidget(self.result_label, 1, 2, 1, 2, Qt.AlignCenter)
+        self.layout.addWidget(self.segments_label, 2, 0, Qt.AlignLeft)
         self.layout.addWidget(self.left_button, 2, 0, Qt.AlignRight)
         self.layout.addWidget(self.right_button, 2, 1, Qt.AlignLeft)
         self.layout.addWidget(self.image_label, 3, 0, 1, 2)
         self.layout.addWidget(self.result_image_label, 3, 2, 1, 2)
         self.layout.addWidget(self.threshold_slider, 4, 0, 1, 2)
+        self.layout.addWidget(self.threshold_label, 5, 1, Qt.AlignRight)
         self.layout.addWidget(self.reset_button, 5, 0, 1, 2, Qt.AlignCenter)
         self.layout.addWidget(self.save_button, 5, 2, 1, 2, Qt.AlignCenter)
         self.setLayout(self.layout)
@@ -88,6 +92,12 @@ class MainWindow(QWidget):
         self.threshold_slider.setValue(0)
         self.threshold_slider.valueChanged[int].connect(self.change_threshold_value)
 
+    def set_font_to_labels(self):
+        self.input_label.setFont(QFont('Times', 11))
+        self.segments_label.setFont(QFont('Times', 11))
+        self.result_label.setFont(QFont('Times', 12))
+        self.threshold_label.setFont(QFont('Times', 11))
+
     def convert_cv_qt(self, cv_img):
         h, w = cv_img.shape
         bytes_per_line = w
@@ -96,16 +106,18 @@ class MainWindow(QWidget):
         return QPixmap.fromImage(p)
 
     def get_input(self):
-        # print(self.input.text())
-        segments = [int(i) for i in self.input.text().split(' ')]
-        # print(segments)
-        self.image.set_divisions(segments)
+        self.segments = [0] + [int(i) for i in self.input.text().split(' ')]
+        self.segments.append(255)
+        self.image.set_divisions(self.segments)
         self.image.apply_segmentation()
         self.initial_image = copy.deepcopy(self.image)
         self.displayed_segment_index = 0  # ??
         self.update_image(self.qt_image, self.image.thresholded[self.displayed_segment_index], self.image_label)
         self.update_image(self.res_image, self.image.result, self.result_image_label)
         self.threshold_slider.setValue(self.image.threshold_values[self.displayed_segment_index])
+        self.update_label(self.segments_label,
+                          'Showed tones in range: [' + str(self.segments[self.displayed_segment_index]) + ', '
+                          + str(self.segments[self.displayed_segment_index + 1]) + ']')
 
     def left_on_click(self):
         if self.displayed_segment_index > 0:
@@ -113,6 +125,9 @@ class MainWindow(QWidget):
             self.displayed_segment_index -= 1
             self.image_label.setPixmap(self.qt_image)
             self.threshold_slider.setValue(self.image.threshold_values[self.displayed_segment_index])
+            self.update_label(self.segments_label,
+                              'Showed tones in range: [' + str(self.segments[self.displayed_segment_index]) + ', '
+                              + str(self.segments[self.displayed_segment_index + 1]) + ']')
 
     def right_on_click(self):
         if self.displayed_segment_index < self.image.n_segments-1:  # indeksowane od 0
@@ -120,9 +135,11 @@ class MainWindow(QWidget):
             self.displayed_segment_index += 1
             self.image_label.setPixmap(self.qt_image)
             self.threshold_slider.setValue(self.image.threshold_values[self.displayed_segment_index])
+            self.update_label(self.segments_label,
+                              'Showed tones in range: [' + str(self.segments[self.displayed_segment_index]) + ', '
+                              + str(self.segments[self.displayed_segment_index + 1]) + ']')
 
     def change_threshold_value(self, value):
-        # print(value)
         before_change = self.image.masked[self.displayed_segment_index]
         changed_image = change_threshold(before_change, value)
         self.image.thresholded[self.displayed_segment_index] = changed_image
@@ -130,6 +147,7 @@ class MainWindow(QWidget):
         self.image.threshold_values[self.displayed_segment_index] = value
         self.image.update_result()
         self.update_image(self.res_image, self.image.result, self.result_image_label)
+        self.update_label(self.threshold_label, 'Threshold value: ' + str(value))
 
     def prev_segment_index(self):
         return self.displayed_segment_index-1
@@ -140,6 +158,9 @@ class MainWindow(QWidget):
     def update_image(self, old_image, new_image, label):
         old_image = self.convert_cv_qt(new_image)
         label.setPixmap(old_image)
+
+    def update_label(self, label, text):
+        label.setText(text)
 
     def reset_calculations(self):
         self.image.thresholded[self.displayed_segment_index] = self.initial_image.thresholded[self.displayed_segment_index]
