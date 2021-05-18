@@ -25,17 +25,28 @@ class MainWindow(QWidget):
         self.input = QLineEdit(self)
         self.segments = None
         self.segments_label = QLabel(self)
-        self.segments_label.setText('Showed tones in rang: None')
+        self.segments_label.setText('Showed tones in range: None')
         self.result_label = QLabel(self)
         self.result_label.setText('Result: ')
         self.threshold_label = QLabel(self)
         self.threshold_label.setText('Threshold value: None')
+        self.pixels_label = QLabel(self)
+        self.pixels_label.setText('Show pixels with value: ')
+        self.input_pixels = QLineEdit(self)
+        self.pixels_accuracy_label = QLabel(self)
+        self.pixels_accuracy_label.setText(' + - ')
+        self.input_accuracy = QLineEdit(self)
 
         self.ok_button = QPushButton('OK')
+        self.ok_button2 = QPushButton('OK')
         self.left_button = QToolButton()
         self.right_button = QToolButton()
         self.reset_button = QPushButton('Reset')
         self.save_button = QPushButton('Save')
+        self.blurred_button = QPushButton('Blurred image')
+
+        self.pixels_value = None
+        self.pixels_accuracy = None
 
         self.displayed_segment_index = 0
         self.image_label = QLabel(self)
@@ -53,6 +64,7 @@ class MainWindow(QWidget):
     def initialize(self):
         self.setGeometry(self.x, self.y, self.width, self.height)
         self.input.setText("51 102 153 204")
+        self.input_accuracy.setText("0")
         self.set_font_to_labels()
         self.image_label.setPixmap(self.qt_image)
         self.result_image_label.setPixmap(self.res_image)
@@ -61,21 +73,29 @@ class MainWindow(QWidget):
         self.layout.addWidget(self.input_label, 0, 0, 1, 2)  # w k ( row span, col span)
         self.layout.addWidget(self.input, 1, 0, 1, 2)
         self.layout.addWidget(self.ok_button, 1, 2, Qt.AlignLeft)
-        self.layout.addWidget(self.result_label, 1, 2, 1, 2, Qt.AlignCenter)
-        self.layout.addWidget(self.segments_label, 2, 0, Qt.AlignLeft)
-        self.layout.addWidget(self.left_button, 2, 0, Qt.AlignRight)
-        self.layout.addWidget(self.right_button, 2, 1, Qt.AlignLeft)
-        self.layout.addWidget(self.image_label, 3, 0, 1, 2)
-        self.layout.addWidget(self.result_image_label, 3, 2, 1, 2)
-        self.layout.addWidget(self.threshold_slider, 4, 0, 1, 2)
-        self.layout.addWidget(self.threshold_label, 5, 1, Qt.AlignRight)
-        self.layout.addWidget(self.reset_button, 5, 0, 1, 2, Qt.AlignCenter)
-        self.layout.addWidget(self.save_button, 5, 2, 1, 2, Qt.AlignCenter)
+        self.layout.addWidget(self.result_label, 2, 2, 1, 4, Qt.AlignCenter)
+        self.layout.addWidget(self.segments_label, 3, 0, Qt.AlignLeft)
+        self.layout.addWidget(self.left_button, 3, 0, Qt.AlignRight)
+        self.layout.addWidget(self.right_button, 3, 1, Qt.AlignLeft)
+        self.layout.addWidget(self.pixels_label, 3, 2)
+        self.layout.addWidget(self.input_pixels, 3, 3, Qt.AlignLeft)
+        self.layout.addWidget(self.pixels_accuracy_label, 3, 3, Qt.AlignRight)
+        self.layout.addWidget(self.input_accuracy, 3, 4, Qt.AlignCenter)
+        self.layout.addWidget(self.ok_button2, 3, 5, Qt.AlignLeft)
+        self.layout.addWidget(self.image_label, 4, 0, 1, 2)
+        self.layout.addWidget(self.result_image_label, 4, 2, 1, 4)
+        self.layout.addWidget(self.threshold_slider, 5, 0, 1, 2)
+        self.layout.addWidget(self.threshold_label, 6, 1, Qt.AlignRight)
+        self.layout.addWidget(self.reset_button, 6, 0, 1, 2, Qt.AlignCenter)
+        self.layout.addWidget(self.save_button, 6, 2, 1, 2, Qt.AlignCenter)
+        self.layout.addWidget(self.blurred_button, 6, 4, 1, 2, Qt.AlignCenter)
         self.setLayout(self.layout)
 
     def initialize_buttons(self):
         self.ok_button.setToolTip('Confirm settings')
-        self.ok_button.clicked.connect(self.get_input)
+        self.ok_button.clicked.connect(self.get_input_segments)
+        self.ok_button2.setToolTip('Confirm pixel values to be showed')
+        self.ok_button2.clicked.connect(self.get_input_pixels_value)
         self.left_button.setToolTip('Previous segment')
         self.left_button.setArrowType(Qt.LeftArrow)
         self.left_button.clicked.connect(self.left_on_click)
@@ -86,6 +106,8 @@ class MainWindow(QWidget):
         self.reset_button.clicked.connect(self.reset_calculations)
         self.save_button.setToolTip('Save the result')
         self.save_button.clicked.connect(self.save_result)
+        self.blurred_button.setToolTip('Show blurred image')
+        self.blurred_button.clicked.connect(self.show_blurred)
 
     def initialize_slider(self):
         self.threshold_slider.setRange(0, 255)
@@ -97,6 +119,7 @@ class MainWindow(QWidget):
         self.segments_label.setFont(QFont('Times', 11))
         self.result_label.setFont(QFont('Times', 12))
         self.threshold_label.setFont(QFont('Times', 11))
+        self.pixels_label.setFont(QFont('Times', 11))
 
     def convert_cv_qt(self, cv_img):
         h, w = cv_img.shape
@@ -105,9 +128,29 @@ class MainWindow(QWidget):
         p = convert_to_Qt_format.scaled(self.display_width, self.display_height, Qt.KeepAspectRatio)
         return QPixmap.fromImage(p)
 
-    def get_input(self):
-        self.segments = [0] + [int(i) for i in self.input.text().split(' ')]
-        self.segments.append(255)
+    def show_blurred(self):
+        self.update_image(self.res_image, self.image.blurred, self.result_image_label)
+
+    def get_input_pixels_value(self):
+        pixels_value = int(self.input_pixels.text())
+        pixels_accuracy = int(self.input_accuracy.text())
+        for x in range(self.image.height):
+            for y in range(self.image.width):
+                if abs(self.image.blurred.item(x, y) - pixels_value) <= pixels_accuracy:
+                    self.image.blurred.itemset((x, y), 255)  # koloruje piksel na bialo
+        self.update_image(self.res_image, self.image.blurred, self.result_image_label)
+        self.image.reblur()
+
+    def get_input_segments(self):
+        if self.input.text()[0] == '0':
+            self.segments = [int(i) for i in self.input.text().split(' ')]
+        else:
+            self.segments = [0] + [int(i) for i in self.input.text().split(' ')]
+
+        if self.segments[len(self.segments)-1] != 255:
+            self.segments.append(255)
+            print(self.segments[len(self.segments)-1])
+
         self.image.set_divisions(self.segments)
         self.image.apply_segmentation()
         self.initial_image = copy.deepcopy(self.image)
@@ -169,6 +212,8 @@ class MainWindow(QWidget):
 
     def save_result(self):
         f = tkinter.filedialog.asksaveasfile(mode='wb', defaultextension='png', initialdir="../Results")
-        if f is not None:
+        if f is not None and self.image.result is not None:
             cv.imwrite(f.name, self.image.result, [cv.IMWRITE_PNG_BILEVEL, 1])
             f.close()
+        elif self.image.result is None:
+            cv.imwrite(f.name, self.image.blurred)

@@ -42,14 +42,17 @@ def gaussian_blurring(image, show=False):
     return gaussed
 
 
-def split_into_tones(image, show=False, brackets=[]):
+def split_into_tones(image, show=False, brackets=[], has_beginning=True):
     
     # Preparing shade sections
-    division = [0]
-    if len(brackets) != 0:
-        for i in brackets:
-            division.append(i)
-    division.append(255)
+    if has_beginning:
+        division = brackets
+    else:
+        division = [0]
+        if len(brackets) != 0:
+            for i in brackets:
+                division.append(i)
+        division.append(255)
     # print(division)
 
     if len(division) == 2:  # DEFAULT: For now I break the intensity into 5 equal sections
@@ -191,7 +194,7 @@ if __name__ == "__main__":
 
     gaussed = gaussian_blurring(gray, show=True)
 
-    Tones = split_into_tones(gaussed, brackets=gray_scale_div, show=False)
+    Tones = split_into_tones(gaussed, brackets=gray_scale_div, show=True, has_beginning=False)
 
     masked, thresholded_values, thresholded = apply_threshold(gaussed, gray, Tones, show=False)
 

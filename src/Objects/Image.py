@@ -34,6 +34,9 @@ class Image:
     def convert_to_gray_scale(self):
         return cv.cvtColor(self.cv_image, cv.COLOR_BGR2GRAY)
 
+    def reblur(self):
+        self.blurred = gaussian_blurring(self.gray)
+
     def apply_segmentation(self):
         if self.divisions:  # tu mozna dodac jakis exception czy cos jesli ktos najpierw nie zrobi set_divisions
             self.tones = split_into_tones(self.blurred, brackets=self.divisions)
