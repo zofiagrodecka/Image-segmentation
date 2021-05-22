@@ -1,6 +1,6 @@
 from PyQt5 import QtGui
 from PyQt5.QtWidgets import QWidget, QLabel, QGridLayout, QToolButton, QSlider, QPushButton, QApplication, QLineEdit
-from PyQt5.QtGui import QPixmap, QFont
+from PyQt5.QtGui import QPixmap, QFont, QColor
 from PyQt5.QtCore import Qt
 import copy
 from src.App.segmentation import change_threshold
@@ -54,8 +54,10 @@ class MainWindow(QWidget):
         self.result_image_label = QLabel(self)
         self.image = image
         self.initial_image = None
-        self.qt_image = self.convert_cv_qt(self.image.gray)
-        self.res_image = self.convert_cv_qt(self.image.blurred)
+        self.qt_image = self.convert_cv_qt(self.image.gray, self.image_label)
+        # self.qt_image_pixmap = QPixmap.fromImage(self.qt_image)
+        self.res_image = self.convert_cv_qt(self.image.blurred, self.result_image_label)
+        # self.res_image_pixmap = QPixmap.fromImage(self.res_image)
 
         self.threshold_slider = QSlider(Qt.Horizontal)
 
@@ -67,8 +69,11 @@ class MainWindow(QWidget):
         self.input.setText("51 102 153 204")
         self.input_accuracy.setText("0")
         self.set_font_to_labels()
-        self.image_label.setPixmap(self.qt_image)
-        self.result_image_label.setPixmap(self.res_image)
+        qt_image_pixmap = QPixmap.fromImage(self.qt_image)
+        self.image_label.setPixmap(qt_image_pixmap)
+        res_image_pixmap = QPixmap.fromImage(self.res_image)
+        self.result_image_label.setPixmap(res_image_pixmap)
+        self.result_image_label.mousePressEvent = self.get_pixel
         self.initialize_slider()
         self.initialize_buttons()
         self.layout.addWidget(self.input_label, 0, 0, 1, 2)  # w k ( row span, col span)
@@ -126,22 +131,34 @@ class MainWindow(QWidget):
         self.threshold_label.setFont(QFont('Times', 11))
         self.pixels_label.setFont(QFont('Times', 11))
 
-    def convert_cv_qt(self, cv_img):
+    def convert_cv_qt(self, cv_img, label):
         h, w = cv_img.shape
         bytes_per_line = w
         convert_to_Qt_format = QtGui.QImage(cv_img.data, w, h, bytes_per_line, QtGui.QImage.Format_Grayscale8)
         p = convert_to_Qt_format.scaled(self.display_width, self.display_height, Qt.KeepAspectRatio)
-        return QPixmap.fromImage(p)
+        label.resize(p.width(), p.height())
+        return p
 
     def show_blurred(self):
         self.update_image(self.res_image, self.image.blurred, self.result_image_label)
 
+    def get_pixel(self, event):
+        x = event.pos().x()
+        y = event.pos().y()
+        pixels_accuracy = int(self.input_accuracy.text())
+        pixels_value = QColor(self.res_image.pixel(x, y)).value()
+        self.show_pixels(pixels_value, pixels_accuracy)
+        print(pixels_value, x, y)
+
     def get_input_pixels_value(self):
         pixels_value = int(self.input_pixels.text())
         pixels_accuracy = int(self.input_accuracy.text())
+        self.show_pixels(pixels_value, pixels_accuracy)
+
+    def show_pixels(self, value, accuracy):
         for x in range(self.image.height):
             for y in range(self.image.width):
-                if abs(self.image.blurred.item(x, y) - pixels_value) <= pixels_accuracy:
+                if abs(self.image.blurred.item(x, y) - value) <= accuracy:
                     self.image.blurred.itemset((x, y), 255)  # koloruje piksel na bialo
         self.update_image(self.res_image, self.image.blurred, self.result_image_label)
         self.image.reblur()
@@ -154,12 +171,11 @@ class MainWindow(QWidget):
 
         if self.segments[len(self.segments)-1] != 255:
             self.segments.append(255)
-            print(self.segments[len(self.segments)-1])
 
         self.image.set_divisions(self.segments)
         self.image.apply_segmentation()
         self.initial_image = copy.deepcopy(self.image)
-        self.displayed_segment_index = 0  # ??
+        self.displayed_segment_index = 0
         self.update_image(self.qt_image, self.image.thresholded[self.displayed_segment_index], self.image_label)
         self.update_image(self.res_image, self.image.result, self.result_image_label)
         self.threshold_slider.setValue(self.image.threshold_values[self.displayed_segment_index])
@@ -176,9 +192,8 @@ class MainWindow(QWidget):
 
     def left_on_click(self):
         if self.displayed_segment_index > 0:
-            self.qt_image = self.convert_cv_qt(self.image.thresholded[self.prev_segment_index()])
+            self.update_image(self.qt_image, self.image.thresholded[self.prev_segment_index()], self.image_label)
             self.displayed_segment_index -= 1
-            self.image_label.setPixmap(self.qt_image)
             self.threshold_slider.setValue(self.image.threshold_values[self.displayed_segment_index])
             self.update_label(self.segments_label,
                               'Showed tones in range: [' + str(self.segments[self.displayed_segment_index]) + ', '
@@ -186,9 +201,8 @@ class MainWindow(QWidget):
 
     def right_on_click(self):
         if self.displayed_segment_index < self.image.n_segments-1:  # indeksowane od 0
-            self.qt_image = self.convert_cv_qt(self.image.thresholded[self.next_segment_index()])
+            self.update_image(self.qt_image, self.image.thresholded[self.next_segment_index()], self.image_label)
             self.displayed_segment_index += 1
-            self.image_label.setPixmap(self.qt_image)
             self.threshold_slider.setValue(self.image.threshold_values[self.displayed_segment_index])
             self.update_label(self.segments_label,
                               'Showed tones in range: [' + str(self.segments[self.displayed_segment_index]) + ', '
@@ -211,8 +225,9 @@ class MainWindow(QWidget):
         return self.displayed_segment_index+1
 
     def update_image(self, old_image, new_image, label):
-        old_image = self.convert_cv_qt(new_image)
-        label.setPixmap(old_image)
+        old_image = self.convert_cv_qt(new_image, label)
+        pixmap = QPixmap.fromImage(old_image)
+        label.setPixmap(pixmap)
 
     def update_label(self, label, text):
         label.setText(text)
