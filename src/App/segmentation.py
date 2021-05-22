@@ -34,7 +34,7 @@ def converting_to_gray_scale(file_name, show=False, explore_files=False):
 
 
 def gaussian_blurring(image, show=False):
-    gaussed = cv.GaussianBlur(image, (BLUR_PARAM, BLUR_PARAM), 10, 10, borderType=0)
+    gaussed = cv.GaussianBlur(image, (BLUR_PARAM, BLUR_PARAM), 1, 1, borderType=0)
 
     if show:
         cv.imshow('BLURRED', gaussed)
@@ -143,6 +143,13 @@ def change_threshold(image, new_value, show=False):
     if show:
         cv.imshow("After change of threshold", image_result)
     return image_result
+
+
+def change_blur(image, new_value, show=False):
+    gaussed = cv.GaussianBlur(image, (0, 0), new_value, new_value, borderType=0)
+    if show:
+        cv.imshow('After change of blur parameters', gaussed)
+    return gaussed
 
 
 def merge_pictures(results, show=False):

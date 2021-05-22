@@ -1,9 +1,10 @@
 from PyQt5 import QtGui
-from PyQt5.QtWidgets import QWidget, QLabel, QGridLayout, QToolButton, QSlider, QPushButton, QApplication, QLineEdit
+from PyQt5.QtWidgets import QWidget, QLabel, QGridLayout, QToolButton, QSlider, QPushButton, QApplication, QLineEdit, \
+    QDesktopWidget
 from PyQt5.QtGui import QPixmap, QFont, QColor
 from PyQt5.QtCore import Qt
 import copy
-from src.App.segmentation import change_threshold
+from src.App.segmentation import change_threshold, change_blur
 import tkinter.filedialog
 import cv2 as cv
 
@@ -13,12 +14,15 @@ class MainWindow(QWidget):
         super().__init__()
         self.setWindowTitle("Image segmentation")
         self.desktop = QApplication.desktop()
-        self.display_width = 640  # self.desktop.screenGeometry().width()/2
-        self.display_height = 480  # self.desktop.screenGeometry().height()/2
-        self.x = 20
-        self.y = 50
-        self.height = self.display_height + 10
-        self.width = self.display_width*2
+
+        self.display_width = 880
+        self.display_height = 540
+
+        self.height = int(self.display_height * 1.3)  # Dosyć biednie <- działa dla wielu zdjęć ale się czasem wywala
+        self.width = self.display_width * 2
+
+        self.x = 100
+        self.y = 200
 
         self.input_label = QLabel(self)
         self.input_label.setText('Segments: ')
@@ -26,15 +30,15 @@ class MainWindow(QWidget):
         self.segments = None
         self.segments_label = QLabel(self)
         self.segments_label.setText('Showed tones in range: None')
-        self.result_label = QLabel(self)
-        self.result_label.setText('Result: ')
+        # self.result_label = QLabel(self)
+        # self.result_label.setText('Result: ')
         self.threshold_label = QLabel(self)
         self.threshold_label.setText('Threshold value: None')
         self.pixels_label = QLabel(self)
         self.pixels_label.setText('Show pixels with value: ')
         self.input_pixels = QLineEdit(self)
         self.pixels_accuracy_label = QLabel(self)
-        self.pixels_accuracy_label.setText(' + - ')
+        self.pixels_accuracy_label.setText('+ -')
         self.input_accuracy = QLineEdit(self)
 
         self.default_text_button = QPushButton('Remember input')
@@ -48,6 +52,7 @@ class MainWindow(QWidget):
 
         self.pixels_value = None
         self.pixels_accuracy = None
+        self.current_blur = 1
 
         self.displayed_segment_index = 0
         self.image_label = QLabel(self)
@@ -60,26 +65,29 @@ class MainWindow(QWidget):
         # self.res_image_pixmap = QPixmap.fromImage(self.res_image)
 
         self.threshold_slider = QSlider(Qt.Horizontal)
+        self.blur_slider = QSlider(Qt.Horizontal)
 
         self.layout = QGridLayout()
         self.initialize()
 
     def initialize(self):
         self.setGeometry(self.x, self.y, self.width, self.height)
+        self.setFixedWidth(self.width)
+        self.setFixedHeight(self.height)
         self.input.setText("51 102 153 204")
-        self.input_accuracy.setText("0")
+        self.input_accuracy.setText("10")
         self.set_font_to_labels()
         qt_image_pixmap = QPixmap.fromImage(self.qt_image)
         self.image_label.setPixmap(qt_image_pixmap)
         res_image_pixmap = QPixmap.fromImage(self.res_image)
         self.result_image_label.setPixmap(res_image_pixmap)
         self.result_image_label.mousePressEvent = self.get_pixel
-        self.initialize_slider()
+        self.initialize_sliders()
         self.initialize_buttons()
         self.layout.addWidget(self.input_label, 0, 0, 1, 2)  # w k ( row span, col span)
         self.layout.addWidget(self.input, 1, 0, 1, 2)
         self.layout.addWidget(self.ok_button, 1, 2, Qt.AlignLeft)
-        self.layout.addWidget(self.result_label, 2, 2, 1, 4, Qt.AlignCenter)
+        # self.layout.addWidget(self.result_label, 2, 2, 1, 4, Qt.AlignCenter)
         self.layout.addWidget(self.segments_label, 3, 0, Qt.AlignLeft)
         self.layout.addWidget(self.left_button, 3, 0, Qt.AlignRight)
         self.layout.addWidget(self.right_button, 3, 1, Qt.AlignLeft)
@@ -91,7 +99,8 @@ class MainWindow(QWidget):
         self.layout.addWidget(self.image_label, 4, 0, 1, 2)
         self.layout.addWidget(self.result_image_label, 4, 2, 1, 4)
         self.layout.addWidget(self.threshold_slider, 5, 0, 1, 2)
-        self.layout.addWidget(self.threshold_label, 6, 1, Qt.AlignRight)
+        self.layout.addWidget(self.blur_slider, 5, 2, 1, 4)
+        self.layout.addWidget(self.threshold_label, 6, 0, Qt.AlignLeft)
         self.layout.addWidget(self.reset_button, 6, 0, 1, 2, Qt.AlignCenter)
         self.layout.addWidget(self.save_button, 6, 2, 1, 2, Qt.AlignCenter)
         self.layout.addWidget(self.blurred_button, 6, 4, 1, 2, Qt.AlignCenter)
@@ -118,16 +127,21 @@ class MainWindow(QWidget):
         self.blurred_button.setToolTip('Show blurred image')
         self.blurred_button.clicked.connect(self.show_blurred)
 
-    def initialize_slider(self):
+    def initialize_sliders(self):
         self.threshold_slider.setRange(0, 255)
         self.threshold_slider.setValue(0)
         self.threshold_slider.valueChanged[int].connect(self.change_threshold_value)
         self.threshold_slider.setDisabled(True)
 
+        self.blur_slider.setRange(1, 50)
+        self.blur_slider.setValue(1)
+        self.blur_slider.valueChanged[int].connect(self.change_blur_value)
+        self.blur_slider.setDisabled(False)
+
     def set_font_to_labels(self):
         self.input_label.setFont(QFont('Times', 11))
         self.segments_label.setFont(QFont('Times', 11))
-        self.result_label.setFont(QFont('Times', 12))
+        # self.result_label.setFont(QFont('Times', 12))
         self.threshold_label.setFont(QFont('Times', 11))
         self.pixels_label.setFont(QFont('Times', 11))
 
@@ -161,7 +175,7 @@ class MainWindow(QWidget):
                 if abs(self.image.blurred.item(x, y) - value) <= accuracy:
                     self.image.blurred.itemset((x, y), 255)  # koloruje piksel na bialo
         self.update_image(self.res_image, self.image.blurred, self.result_image_label)
-        self.image.reblur()
+        self.image.blurred = change_blur(self.image.gray, self.current_blur)
 
     def get_input_segments(self):
         if self.input.text()[0] == '0':
@@ -217,6 +231,11 @@ class MainWindow(QWidget):
         self.image.update_result()
         self.update_image(self.res_image, self.image.result, self.result_image_label)
         self.update_label(self.threshold_label, 'Threshold value: ' + str(value))
+
+    def change_blur_value(self, value):
+        self.current_blur = value
+        self.image.blurred = change_blur(self.image.gray, value)
+        self.update_image(self.qt_image, self.image.blurred, self.result_image_label)
 
     def prev_segment_index(self):
         return self.displayed_segment_index-1
