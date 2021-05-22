@@ -37,6 +37,7 @@ class MainWindow(QWidget):
         self.pixels_accuracy_label.setText(' + - ')
         self.input_accuracy = QLineEdit(self)
 
+        self.default_text_button = QPushButton('Remember input')
         self.ok_button = QPushButton('OK')
         self.ok_button2 = QPushButton('OK')
         self.left_button = QToolButton()
@@ -94,16 +95,19 @@ class MainWindow(QWidget):
     def initialize_buttons(self):
         self.ok_button.setToolTip('Confirm settings')
         self.ok_button.clicked.connect(self.get_input_segments)
-        self.ok_button2.setToolTip('Confirm pixel values to be showed')
+        self.ok_button2.setToolTip('Confirm pixel values to be shown')
         self.ok_button2.clicked.connect(self.get_input_pixels_value)
         self.left_button.setToolTip('Previous segment')
         self.left_button.setArrowType(Qt.LeftArrow)
         self.left_button.clicked.connect(self.left_on_click)
+        self.left_button.setDisabled(True)
         self.right_button.setToolTip('Next segment')
         self.right_button.setArrowType(Qt.RightArrow)
         self.right_button.clicked.connect(self.right_on_click)
+        self.right_button.setDisabled(True)
         self.reset_button.setToolTip('Reset settings')
         self.reset_button.clicked.connect(self.reset_calculations)
+        self.reset_button.setDisabled(True)
         self.save_button.setToolTip('Save the result')
         self.save_button.clicked.connect(self.save_result)
         self.blurred_button.setToolTip('Show blurred image')
@@ -113,6 +117,7 @@ class MainWindow(QWidget):
         self.threshold_slider.setRange(0, 255)
         self.threshold_slider.setValue(0)
         self.threshold_slider.valueChanged[int].connect(self.change_threshold_value)
+        self.threshold_slider.setDisabled(True)
 
     def set_font_to_labels(self):
         self.input_label.setFont(QFont('Times', 11))
@@ -161,6 +166,13 @@ class MainWindow(QWidget):
         self.update_label(self.segments_label,
                           'Showed tones in range: [' + str(self.segments[self.displayed_segment_index]) + ', '
                           + str(self.segments[self.displayed_segment_index + 1]) + ']')
+        self.enable_widgets()
+
+    def enable_widgets(self):
+        self.reset_button.setDisabled(False)
+        self.right_button.setDisabled(False)
+        self.left_button.setDisabled(False)
+        self.threshold_slider.setDisabled(False)
 
     def left_on_click(self):
         if self.displayed_segment_index > 0:
