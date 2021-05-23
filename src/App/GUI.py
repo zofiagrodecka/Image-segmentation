@@ -96,7 +96,7 @@ class MainWindow(QWidget):
         self.layout.addWidget(self.pixels_accuracy_label, 2, 4, 1, 1, Qt.AlignRight)
         self.layout.addWidget(self.input_accuracy, 2, 5, 1, 2)
         self.layout.addWidget(self.ok_button2, 1, 7, 2, 1, Qt.AlignLeft)
-        self.layout.addWidget(self.segments_label, 2, 0, 1, 1)
+        self.layout.addWidget(self.segments_label, 6, 3, 1, 1)
         self.layout.addWidget(self.left_button, 2, 1, 1, 1, Qt.AlignRight)
         self.layout.addWidget(self.right_button, 2, 2, 1, 1, Qt.AlignLeft)
         self.layout.addWidget(self.no_image_label, 4, 0, 1, 4, Qt.AlignCenter)
@@ -227,9 +227,13 @@ class MainWindow(QWidget):
                 self.image.apply_segmentation()
                 self.initial_image = copy.deepcopy(self.image)
                 self.displayed_segment_index = 0
-                self.update_image(self.qt_image, self.image.thresholded[self.displayed_segment_index], self.image_label)
-                self.update_image(self.res_image, self.image.result, self.result_image_label)
-                self.threshold_slider.setValue(self.image.threshold_values[self.displayed_segment_index])
+                if self.image.threshold_values[self.displayed_segment_index] is None:
+                    self.show_black_image()
+                else:
+                    self.update_image(self.qt_image, self.image.thresholded[self.displayed_segment_index], self.image_label)
+                    self.update_image(self.res_image, self.image.result, self.result_image_label)
+                    self.threshold_slider.setValue(self.image.threshold_values[self.displayed_segment_index])
+
                 self.update_label(self.segments_label,
                                   'Tones in range: ' + str(self.segments[self.displayed_segment_index]) + ' - '
                                   + str(self.segments[self.displayed_segment_index + 1]) + ' ')
@@ -254,7 +258,9 @@ class MainWindow(QWidget):
     def left_on_click(self):
         if self.displayed_segment_index > 0:
             self.displayed_segment_index -= 1
-            if self.displayed_segment_index in self.image.empty_tones:
+            print("index: ", self.displayed_segment_index)
+            print(len(self.image.thresholded))
+            if self.image.thresholded[self.displayed_segment_index] is None:
                 self.show_black_image()
             else:
                 self.update_image(self.qt_image, self.image.thresholded[self.displayed_segment_index], self.image_label)
@@ -269,9 +275,12 @@ class MainWindow(QWidget):
     def right_on_click(self):
         if self.displayed_segment_index < self.image.n_segments-1:  # indeksowane od 0
             self.displayed_segment_index += 1
-            if self.displayed_segment_index in self.image.empty_tones:
+            print("index: ", self.displayed_segment_index)
+            if self.image.thresholded[self.displayed_segment_index] is None:
                 self.show_black_image()
             else:
+                print('here')
+                print(self.image.thresholded[self.displayed_segment_index])
                 self.update_image(self.qt_image, self.image.thresholded[self.displayed_segment_index], self.image_label)
                 self.threshold_slider.setValue(self.image.threshold_values[self.displayed_segment_index])
                 self.threshold_slider.setDisabled(False)
@@ -287,7 +296,7 @@ class MainWindow(QWidget):
         self.threshold_slider.setDisabled(True)
         self.reset_button.setDisabled(True)
         self.update_label(self.no_image_label,
-                          "<font color='white'><b>No pixels of value in this range</b></font>")
+                          "<font color='white'><b>No pixels with value in this range</b></font>")
 
     def change_threshold_value(self, value):
         before_change = self.image.masked[self.displayed_segment_index]
@@ -305,12 +314,6 @@ class MainWindow(QWidget):
         self.res_image = self.convert_cv_qt(self.image.blurred, self.result_image_label)
         self.result_image_label.setPixmap(QPixmap.fromImage(self.res_image))
         self.update_label(self.blur_label, 'Blur value: ' + str(value))
-
-    def prev_segment_index(self):
-        return self.displayed_segment_index-1
-
-    def next_segment_index(self):
-        return self.displayed_segment_index+1
 
     def update_image(self, old_image, new_image, label):
         old_image = self.convert_cv_qt(new_image, label)

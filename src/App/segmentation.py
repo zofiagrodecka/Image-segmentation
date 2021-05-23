@@ -129,6 +129,8 @@ def apply_threshold(blurred_image, gray_image, Tones):
             results.append(image_result)
         else:
             empty_tones.append(i)
+            results.append(None)
+            threshold_values.append(None)
         masked.append(masked_img)
         mask = np.zeros(blurred_image.shape[:2], np.uint8)
 
@@ -157,11 +159,23 @@ def merge_pictures(results, show=False):
         image_result = image_result.tobitmap()
         return image_result
 
-    merged = cv.bitwise_or(results[0], results[1])
-    # cv.imshow(f"Tones {1, 2} after merge", merged)
-    for i in range(2, len(results)):
-        merged = cv.bitwise_or(merged, results[i])
-        # cv.imshow(f"Tones {i+1} after merge", merged)
+    i = 0
+    while i < n and results[i] is None:
+        i += 1
+
+    j = i + 1
+    while j < n and results[j] is None:
+        j += 1
+
+    merged = cv.bitwise_or(results[i], results[j])
+
+    i = j+1
+    while i < n:
+        while i < n and results[i] is None:
+            i += 1
+        if i < n:
+            merged = cv.bitwise_or(merged, results[i])
+            i += 1
 
     if show:
         cv.imshow("Result", merged)

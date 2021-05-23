@@ -43,7 +43,7 @@ class Image:
             self.tones = split_into_tones(self.blurred, brackets=self.divisions)
             self.masked, self.threshold_values, self.thresholded, self.empty_tones = apply_threshold(self.blurred, self.gray, self.tones)  # listy
             self.result = merge_pictures(self.thresholded)
-            self.n_segments = len(self.masked)
+            self.n_segments = len(self.thresholded)
             self.has_applied_segmentation = True
 
     def update_result(self):
