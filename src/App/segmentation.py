@@ -56,21 +56,13 @@ def split_into_tones(image, show=False, brackets=[], has_beginning=True):
     # print(division)
 
     if len(division) == 2:  # DEFAULT: For now I break the intensity into 5 equal sections
-        Tones = [[] for i in range(5)]
-
+        #print("n: ", len([image]))
+        Tones = [[]]
         for y in range(image.shape[1]):
             for x in range(image.shape[0]):
-                intensity = image[x, y]
-                div = intensity//51
-                if div == 5:
-                    div -= 1
-                Tones[div].append([x, y])
-
-        if show:
-            print_by_tones(image, Tones, [0, 51, 102, 153, 204, 255])
-
+                Tones[0].append([x, y])
         return Tones
-
+    
     else:  # with user-described sections of gray spectrum
         Tones = [[] for i in range(len(division) - 1)]
 
@@ -153,11 +145,10 @@ def change_blur(image, new_value, show=False):
 
 def merge_pictures(results, show=False):
     n = len(results)
-
     if n < 2:
-        image_result = Image.fromarray(results[0].astype(np.uint8))
-        image_result = image_result.tobitmap()
-        return image_result
+        if show:
+            cv.imshow("Result", results[0])
+        return results[0]
 
     i = 0
     while i < n and results[i] is None:
@@ -212,7 +203,7 @@ if __name__ == "__main__":
 
     gaussed = gaussian_blurring(gray, show=True)
 
-    Tones = split_into_tones(gaussed, brackets=gray_scale_div, show=True, has_beginning=False)
+    Tones = split_into_tones(gaussed, brackets=gray_scale_div, show=True, has_beginning=True)
 
     masked, thresholded_values, thresholded, empty = apply_threshold(gaussed, gray, Tones)
 
