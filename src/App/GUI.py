@@ -1,9 +1,13 @@
+import traceback
+
 from PyQt5 import QtGui
 from PyQt5.QtWidgets import QWidget, QLabel, QGridLayout, QToolButton, QSlider, QPushButton, QApplication, QLineEdit, \
-    QDesktopWidget
+    QDesktopWidget, QDialog, QMessageBox
 from PyQt5.QtGui import QPixmap, QFont, QColor
 from PyQt5.QtCore import Qt
 import copy
+
+from src.App.DialogWindow import DialogWindow
 from src.App.segmentation import change_threshold, change_blur
 import tkinter.filedialog
 import cv2 as cv
@@ -35,7 +39,7 @@ class MainWindow(QWidget):
         self.threshold_label = QLabel(self)
         # self.threshold_label.setText('Threshold value: None')
         self.blur_label = QLabel(self)
-        self.blur_label.setText('Blur value: None')
+        self.blur_label.setText('Blur value: 10')
         self.pixels_label = QLabel(self)
         self.pixels_label.setText('Show pixels with value: ')
         self.input_pixels = QLineEdit(self)
@@ -69,6 +73,10 @@ class MainWindow(QWidget):
 
         self.threshold_slider = QSlider(Qt.Horizontal)
         self.blur_slider = QSlider(Qt.Horizontal)
+
+        self.dialog_window = QMessageBox()
+        self.dialog_window.setIcon(QMessageBox.Warning)
+        self.dialog_window.setWindowTitle("WARNING")
 
         self.layout = QGridLayout()
         self.initialize()
@@ -138,7 +146,8 @@ class MainWindow(QWidget):
         self.threshold_slider.setDisabled(True)
 
         self.blur_slider.setRange(1, 50)
-        self.blur_slider.setValue(1)
+        self.blur_slider.setValue(10)
+        self.change_blur_value(10)
         self.blur_slider.valueChanged[int].connect(self.change_blur_value)
         # self.blur_slider.setDisabled(False)
 
@@ -149,7 +158,7 @@ class MainWindow(QWidget):
         self.threshold_label.setFont(QFont('Times', 11))
         self.blur_label.setFont(QFont('Times', 11))
         self.pixels_label.setFont(QFont('Times', 11))
-        self.no_pixels_label.setFont(QFont('Times', 11))
+        self.no_pixels_label.setFont(QFont('Times', 16))
 
     def convert_cv_qt(self, cv_img, label):
         h, w = cv_img.shape
@@ -169,12 +178,22 @@ class MainWindow(QWidget):
         pixels_value = QColor(self.res_image.pixel(x, y)).value()
         self.show_pixels(pixels_value, pixels_accuracy)
         self.input_pixels.setText(str(pixels_value))
-        print(pixels_value, x, y)
 
     def get_input_pixels_value(self):
-        pixels_value = int(self.input_pixels.text())
-        pixels_accuracy = int(self.input_accuracy.text())
-        self.show_pixels(pixels_value, pixels_accuracy)
+        try:
+            pixels_value = int(self.input_pixels.text())
+            pixels_accuracy = int(self.input_accuracy.text())
+            if pixels_value < 0 or pixels_value > 255:
+                print("You entered a number:", pixels_value, "that is out of range [0, 255]")
+                self.show_error_window("You entered a number: " + str(pixels_value) + " that is out of range [0, 255]")
+            elif pixels_accuracy < 0 or pixels_accuracy > 255:
+                print("You entered a number:", pixels_accuracy, "that is out of range [0, 255]")
+                self.show_error_window("You entered a number: " + str(pixels_accuracy) + " that is out of range [0, 255]")
+            else:
+                self.show_pixels(pixels_value, pixels_accuracy)
+        except ValueError as ve:
+            print(ve)
+            self.show_error_window("You entered a non-numeric value")
 
     def show_pixels(self, value, accuracy):
         counter = 0
@@ -192,26 +211,43 @@ class MainWindow(QWidget):
             self.update_label(self.no_pixels_label, "")
 
     def get_input_segments(self):
-        if self.input.text()[0] == '0':
-            self.segments = [int(i) for i in self.input.text().split(' ')]
-        else:
-            self.segments = [0] + [int(i) for i in self.input.text().split(' ')]
+        num_in_range = True
+        try:
+            if self.input.text()[0] == '0':
+                self.segments = [int(i) for i in self.input.text().split(' ')]
+            else:
+                self.segments = [0] + [int(i) for i in self.input.text().split(' ')]
 
-        if self.segments[len(self.segments)-1] != 255:
-            self.segments.append(255)
+            if self.segments[len(self.segments)-1] != 255:
+                self.segments.append(255)
 
-        self.image.set_divisions(self.segments)
-        self.image.apply_segmentation()
-        self.initial_image = copy.deepcopy(self.image)
-        self.displayed_segment_index = 0
-        self.update_image(self.qt_image, self.image.thresholded[self.displayed_segment_index], self.image_label)
-        self.update_image(self.res_image, self.image.result, self.result_image_label)
-        self.threshold_slider.setValue(self.image.threshold_values[self.displayed_segment_index])
-        self.update_label(self.segments_label,
-                          'Showed tones in range: [' + str(self.segments[self.displayed_segment_index]) + ', '
-                          + str(self.segments[self.displayed_segment_index + 1]) + ']')
-        self.update_label(self.no_pixels_label, "")
-        self.enable_widgets()
+            for num in self.segments:
+                if num < 0 or num > 255:
+                    error_value = num
+                    num_in_range = False
+
+            if num_in_range and self.segments == sorted(self.segments):
+                self.image.set_divisions(self.segments)
+                self.image.apply_segmentation()
+                self.initial_image = copy.deepcopy(self.image)
+                self.displayed_segment_index = 0
+                self.update_image(self.qt_image, self.image.thresholded[self.displayed_segment_index], self.image_label)
+                self.update_image(self.res_image, self.image.result, self.result_image_label)
+                self.threshold_slider.setValue(self.image.threshold_values[self.displayed_segment_index])
+                self.update_label(self.segments_label,
+                                  'Showed tones in range: [' + str(self.segments[self.displayed_segment_index]) + ', '
+                                  + str(self.segments[self.displayed_segment_index + 1]) + ']')
+                self.update_label(self.no_pixels_label, "")
+                self.enable_widgets()
+            elif not num_in_range:
+                print("You entered a number:", error_value, "that is out of range [0, 255]")
+                self.show_error_window("You entered a number: " + str(error_value) + " that is out of range [0, 255]")
+            elif self.segments != sorted(self.segments):
+                print("Order of typed segments:", self.input.text(), "is wrong!")
+                self.show_error_window("Order of typed segments: " + self.input.text() + " is wrong")
+        except ValueError as ve:
+            print(ve)
+            self.show_error_window("You entered a non-numeric value in: " + self.input.text())
 
     def enable_widgets(self):
         self.reset_button.setDisabled(False)
@@ -280,3 +316,7 @@ class MainWindow(QWidget):
             f.close()
         elif self.image.result is None:
             cv.imwrite(f.name, self.image.blurred)
+
+    def show_error_window(self, message):
+        self.dialog_window.setText(message)
+        self.dialog_window.exec()
