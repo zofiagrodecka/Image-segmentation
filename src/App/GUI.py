@@ -13,7 +13,7 @@ class MainWindow(QWidget):
     def __init__(self, image):
         super().__init__()
         self.setWindowTitle("Image segmentation")
-        self.desktop = QApplication.desktop()
+        # self.desktop = QApplication.desktop()
 
         self.display_width = 880
         self.display_height = 540
@@ -34,6 +34,8 @@ class MainWindow(QWidget):
         # self.result_label.setText('Result: ')
         self.threshold_label = QLabel(self)
         self.threshold_label.setText('Threshold value: None')
+        self.blur_label = QLabel(self)
+        self.blur_label.setText('Blur value: None')
         self.pixels_label = QLabel(self)
         self.pixels_label.setText('Show pixels with value: ')
         self.input_pixels = QLineEdit(self)
@@ -77,6 +79,7 @@ class MainWindow(QWidget):
         self.input.setText("51 102 153 204")
         self.input_accuracy.setText("10")
         self.set_font_to_labels()
+        print("h: ", self.result_image_label.height(), " w: ", self.result_image_label.width())
         qt_image_pixmap = QPixmap.fromImage(self.qt_image)
         self.image_label.setPixmap(qt_image_pixmap)
         res_image_pixmap = QPixmap.fromImage(self.res_image)
@@ -102,8 +105,8 @@ class MainWindow(QWidget):
         self.layout.addWidget(self.blur_slider, 5, 2, 1, 4)
         self.layout.addWidget(self.threshold_label, 6, 0, Qt.AlignLeft)
         self.layout.addWidget(self.reset_button, 6, 0, 1, 2, Qt.AlignCenter)
-        self.layout.addWidget(self.save_button, 6, 2, 1, 2, Qt.AlignCenter)
-        self.layout.addWidget(self.blurred_button, 6, 4, 1, 2, Qt.AlignCenter)
+        self.layout.addWidget(self.blur_label, 6, 2, 1, 2, Qt.AlignLeft)
+        self.layout.addWidget(self.save_button, 6, 4, 1, 2, Qt.AlignCenter)
         self.setLayout(self.layout)
 
     def initialize_buttons(self):
@@ -124,8 +127,8 @@ class MainWindow(QWidget):
         self.reset_button.setDisabled(True)
         self.save_button.setToolTip('Save the result')
         self.save_button.clicked.connect(self.save_result)
-        self.blurred_button.setToolTip('Show blurred image')
-        self.blurred_button.clicked.connect(self.show_blurred)
+        # self.blurred_button.setToolTip('Show blurred image')
+        # self.blurred_button.clicked.connect(self.show_blurred)
 
     def initialize_sliders(self):
         self.threshold_slider.setRange(0, 255)
@@ -136,25 +139,26 @@ class MainWindow(QWidget):
         self.blur_slider.setRange(1, 50)
         self.blur_slider.setValue(1)
         self.blur_slider.valueChanged[int].connect(self.change_blur_value)
-        self.blur_slider.setDisabled(False)
+        # self.blur_slider.setDisabled(False)
 
     def set_font_to_labels(self):
         self.input_label.setFont(QFont('Times', 11))
         self.segments_label.setFont(QFont('Times', 11))
         # self.result_label.setFont(QFont('Times', 12))
         self.threshold_label.setFont(QFont('Times', 11))
+        self.blur_label.setFont(QFont('Times', 11))
         self.pixels_label.setFont(QFont('Times', 11))
 
     def convert_cv_qt(self, cv_img, label):
         h, w = cv_img.shape
         bytes_per_line = w
         convert_to_Qt_format = QtGui.QImage(cv_img.data, w, h, bytes_per_line, QtGui.QImage.Format_Grayscale8)
-        p = convert_to_Qt_format.scaled(self.display_width, self.display_height, Qt.KeepAspectRatio)
-        label.resize(p.width(), p.height())
-        return p
+        scaled = convert_to_Qt_format.scaled(self.display_width, self.display_height, Qt.KeepAspectRatio)
+        label.resize(scaled.width(), scaled.height())
+        return scaled
 
-    def show_blurred(self):
-        self.update_image(self.res_image, self.image.blurred, self.result_image_label)
+    # def show_blurred(self):
+        # self.update_image(self.res_image, self.image.blurred, self.result_image_label)
 
     def get_pixel(self, event):
         x = event.pos().x()
@@ -235,7 +239,8 @@ class MainWindow(QWidget):
     def change_blur_value(self, value):
         self.current_blur = value
         self.image.blurred = change_blur(self.image.gray, value)
-        self.update_image(self.qt_image, self.image.blurred, self.result_image_label)
+        self.update_image(self.res_image, self.image.blurred, self.result_image_label)
+        self.update_label(self.blur_label, 'Blur value: ' + str(value))
 
     def prev_segment_index(self):
         return self.displayed_segment_index-1
