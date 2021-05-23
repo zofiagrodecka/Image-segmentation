@@ -7,7 +7,6 @@ from PyQt5.QtGui import QPixmap, QFont, QColor
 from PyQt5.QtCore import Qt
 import copy
 
-from src.App.DialogWindow import DialogWindow
 from src.App.segmentation import change_threshold, change_blur
 import tkinter.filedialog
 import cv2 as cv
