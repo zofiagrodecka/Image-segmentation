@@ -25,6 +25,7 @@ class Image:
         self.threshold_values = []
         self.thresholded = []
         self.result = None
+        self.empty_tones = []
         self.n_segments = 0
         self.has_applied_segmentation = False
 
@@ -38,11 +39,11 @@ class Image:
         self.blurred = gaussian_blurring(self.gray)
 
     def apply_segmentation(self):
-        if self.divisions:  # tu mozna dodac jakis exception czy cos jesli ktos najpierw nie zrobi set_divisions
+        if self.divisions:
             self.tones = split_into_tones(self.blurred, brackets=self.divisions)
-            self.masked, self.threshold_values, self.thresholded = apply_threshold(self.blurred, self.gray, self.tones)  # listy
+            self.masked, self.threshold_values, self.thresholded, self.empty_tones = apply_threshold(self.blurred, self.gray, self.tones)  # listy
             self.result = merge_pictures(self.thresholded)
-            self.n_segments = len(self.thresholded)
+            self.n_segments = len(self.masked)
             self.has_applied_segmentation = True
 
     def update_result(self):

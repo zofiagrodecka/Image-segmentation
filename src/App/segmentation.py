@@ -106,12 +106,13 @@ def print_by_tones(image, Tones, division):
     # cv.imshow("Tonal sections", All)
 
 
-def apply_threshold(blurred_image, gray_image, Tones, show=False):
+def apply_threshold(blurred_image, gray_image, Tones):
     N = len(Tones)
     mask = np.zeros(blurred_image.shape[:2], np.uint8)
     masked = []
     results = []
     threshold_values = []
+    empty_tones = []
 
     for i in range(N):
         for (x, y) in Tones[i]:
@@ -124,18 +125,14 @@ def apply_threshold(blurred_image, gray_image, Tones, show=False):
             value = threshold_otsu(thr_masked.compressed())
             threshold_values.append(value)
             threshold, image_result = cv.threshold(masked_img, value, 255, cv.THRESH_BINARY)
-
-            masked.append(masked_img)
+            # masked.append(masked_img)
             results.append(image_result)
-            if show:
-                cv.imshow(f"Mask {i + 1}", mask)
-                masked_img_scaled = cv.resize(masked_img, None, fx=0.6, fy=0.6, interpolation=cv.INTER_LINEAR)
-                cv.imshow(f"Masked image {i + 1}", masked_img_scaled)
-                # image_result_scaled = cv.resize(image_result, None, fx=0.6, fy=0.6, interpolation=cv.INTER_LINEAR)
-                image = np.array(image_result)
-                cv.imshow(f"Tone {i + 1} after threshold", image)
-            mask = np.zeros(blurred_image.shape[:2], np.uint8)
-    return masked, threshold_values, results
+        else:
+            empty_tones.append(i)
+        masked.append(masked_img)
+        mask = np.zeros(blurred_image.shape[:2], np.uint8)
+
+    return masked, threshold_values, results, empty_tones
 
 
 def change_threshold(image, new_value, show=False):
@@ -203,7 +200,7 @@ if __name__ == "__main__":
 
     Tones = split_into_tones(gaussed, brackets=gray_scale_div, show=True, has_beginning=False)
 
-    masked, thresholded_values, thresholded = apply_threshold(gaussed, gray, Tones, show=False)
+    masked, thresholded_values, thresholded, empty = apply_threshold(gaussed, gray, Tones)
 
     result = merge_pictures(thresholded, show=True)
 
