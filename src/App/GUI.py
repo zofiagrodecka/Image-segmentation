@@ -9,12 +9,14 @@ from src.App.segmentation import change_threshold, change_blur
 import tkinter.filedialog
 import cv2 as cv
 import numpy as np
+from src.Objects.JsonParser import JsonParser
 
 
 class MainWindow(QWidget):
     def __init__(self, image):
         super().__init__()
         self.setWindowTitle("To-Bit-Map")
+        self.launch_settings = JsonParser()
 
         self.display_width = 880
         self.display_height = 500
@@ -49,6 +51,8 @@ class MainWindow(QWidget):
         self.right_button = QToolButton()
         self.reset_button = QPushButton('Reset')
         self.save_button = QPushButton('Save')
+        self.remember_button = QPushButton('Remember')
+        self.forget_button = QPushButton('Forget')
 
         self.pixels_value = None
         self.pixels_accuracy = None
@@ -76,7 +80,12 @@ class MainWindow(QWidget):
         self.setGeometry(self.x, self.y, self.width, self.height)
         self.setFixedWidth(self.width)
         self.setFixedHeight(self.height)
-        self.input.setText("51 102 153 204")
+        if self.launch_settings.file_exists:
+            res = self.launch_settings.import_from_json()
+            self.input.setText(res[0])
+            self.current_blur = res[1]
+        else:
+            self.input.setText("51 102 153 204")
         self.input_accuracy.setText("10")
         self.set_font_to_labels()
         qt_image_pixmap = QPixmap.fromImage(self.qt_image)
@@ -91,12 +100,14 @@ class MainWindow(QWidget):
         self.layout.addWidget(self.input_label, 1, 0, 1, 1, Qt.AlignRight)
         self.layout.addWidget(self.input, 1, 1, 1, 2)
         self.layout.addWidget(self.ok_button, 1, 3, 1, 1, Qt.AlignLeft)
+        self.layout.addWidget(self.remember_button, 1, 3, 1, 1, Qt.AlignRight)
         self.layout.addWidget(self.pixels_label, 1, 4, 1, 1, Qt.AlignRight)
         self.layout.addWidget(self.input_pixels, 1, 5, 1, 2)
+        self.layout.addWidget(self.forget_button, 2, 3, 1, 1, Qt.AlignRight)
         self.layout.addWidget(self.pixels_accuracy_label, 2, 4, 1, 1, Qt.AlignRight)
         self.layout.addWidget(self.input_accuracy, 2, 5, 1, 2)
         self.layout.addWidget(self.ok_button2, 1, 7, 2, 1, Qt.AlignLeft)
-        self.layout.addWidget(self.segments_label, 6, 3, 1, 1)
+        self.layout.addWidget(self.segments_label, 2, 0, 1, 1)
         self.layout.addWidget(self.left_button, 2, 1, 1, 1, Qt.AlignRight)
         self.layout.addWidget(self.right_button, 2, 2, 1, 1, Qt.AlignLeft)
         self.layout.addWidget(self.no_image_label, 4, 0, 1, 4, Qt.AlignCenter)
@@ -108,8 +119,7 @@ class MainWindow(QWidget):
         self.layout.addWidget(self.threshold_label, 6, 0, 1, 1, Qt.AlignCenter)
         self.layout.addWidget(self.reset_button, 6, 1, 1, 2, Qt.AlignCenter)
         self.layout.addWidget(self.blur_label, 6, 4, 1, 1, Qt.AlignCenter)
-        self.layout.addWidget(self.save_button, 6, 5, 1, 2, Qt.AlignCenter)
-
+        self.layout.addWidget(self.save_button, 6, 5, 1, 1, Qt.AlignCenter)
         self.setLayout(self.layout)
 
     def initialize_buttons(self):
@@ -130,6 +140,10 @@ class MainWindow(QWidget):
         self.reset_button.setDisabled(True)
         self.save_button.setToolTip('Save the result')
         self.save_button.clicked.connect(self.save_result)
+        self.remember_button.setToolTip('Remember segments')
+        self.remember_button.clicked.connect(self.remember_settings)
+        self.forget_button.setToolTip('Forget remembered segments')
+        self.forget_button.clicked.connect(self.forget_settings)
 
     def initialize_sliders(self):
         self.threshold_slider.setRange(0, 255)
@@ -138,8 +152,8 @@ class MainWindow(QWidget):
         self.threshold_slider.setDisabled(True)
 
         self.blur_slider.setRange(1, 50)
-        self.blur_slider.setValue(10)
-        self.change_blur_value(10)
+        self.blur_slider.setValue(self.current_blur)
+        self.change_blur_value(self.current_blur)
         self.blur_slider.valueChanged[int].connect(self.change_blur_value)
 
     def set_font_to_labels(self):
@@ -181,8 +195,10 @@ class MainWindow(QWidget):
             else:
                 self.show_pixels(pixels_value, pixels_accuracy)
         except ValueError as ve:
-            print(ve)
+            print(type(ve), ve)
             self.show_warning_window("You entered a non-numeric value")
+        except AssertionError as ae:
+            print(type(ae), ae)
 
     def show_pixels(self, value, accuracy):
         counter = 0
@@ -217,12 +233,14 @@ class MainWindow(QWidget):
             if self.segments[len(self.segments)-1] != 255:
                 self.segments.append(255)
 
+            self.segments.sort()
+
             for num in self.segments:
                 if num < 0 or num > 255:
                     error_value = num
                     num_in_range = False
 
-            if num_in_range and self.segments == sorted(self.segments):
+            if num_in_range:
                 self.image.set_divisions(self.segments)
                 self.image.apply_segmentation()
                 self.initial_image = copy.deepcopy(self.image)
@@ -239,12 +257,9 @@ class MainWindow(QWidget):
                                   + str(self.segments[self.displayed_segment_index + 1]) + ' ')
                 self.update_label(self.no_pixels_label, "")
                 self.enable_widgets()
-            elif not num_in_range:
+            else:
                 print("You entered a number:", error_value, "that is out of range [0, 255]")
                 self.show_warning_window("You entered a number: " + str(error_value) + " that is out of range [0, 255]")
-            elif self.segments != sorted(self.segments):
-                print("Order of typed segments:", self.input.text(), "is wrong!")
-                self.show_warning_window("Order of typed segments: " + self.input.text() + " is wrong")
         except ValueError as ve:
             print(ve)
             self.show_warning_window("You entered a non-numeric value in: " + self.input.text())
@@ -258,8 +273,6 @@ class MainWindow(QWidget):
     def left_on_click(self):
         if self.displayed_segment_index > 0:
             self.displayed_segment_index -= 1
-            print("index: ", self.displayed_segment_index)
-            print(len(self.image.thresholded))
             if self.image.thresholded[self.displayed_segment_index] is None:
                 self.show_black_image()
             else:
@@ -275,12 +288,9 @@ class MainWindow(QWidget):
     def right_on_click(self):
         if self.displayed_segment_index < self.image.n_segments-1:  # indeksowane od 0
             self.displayed_segment_index += 1
-            print("index: ", self.displayed_segment_index)
             if self.image.thresholded[self.displayed_segment_index] is None:
                 self.show_black_image()
             else:
-                print('here')
-                print(self.image.thresholded[self.displayed_segment_index])
                 self.update_image(self.qt_image, self.image.thresholded[self.displayed_segment_index], self.image_label)
                 self.threshold_slider.setValue(self.image.threshold_values[self.displayed_segment_index])
                 self.threshold_slider.setDisabled(False)
@@ -339,3 +349,9 @@ class MainWindow(QWidget):
     def show_warning_window(self, message):
         self.dialog_window.setText(message)
         self.dialog_window.exec()
+
+    def remember_settings(self):
+        self.launch_settings.export_to_json(self.input.text(), self.current_blur)
+
+    def forget_settings(self):
+        self.launch_settings.delete_file()

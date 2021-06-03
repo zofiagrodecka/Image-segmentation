@@ -42,7 +42,7 @@ def gaussian_blurring(image, show=False):
     return gaussed
 
 
-def split_into_tones(image, show=False, brackets=[], has_beginning=True):
+def split_into_tones(image, brackets, show=False, has_beginning=True):
     
     # Preparing shade sections
     if has_beginning:
