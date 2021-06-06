@@ -9,9 +9,9 @@ from src.App.segmentation import change_threshold, change_blur
 import tkinter.filedialog
 import cv2 as cv
 import numpy as np
-
 from src.Objects.Image import Image
 from src.Objects.JsonParser import JsonParser
+from matplotlib import pyplot as plt
 
 
 class MainWindow(QWidget):
@@ -57,6 +57,7 @@ class MainWindow(QWidget):
         self.forget_button = QPushButton('Forget')
         self.load_button = QPushButton('Open')
         self.recent_button = QPushButton('Open recent')
+        self.histogram_button = QPushButton('Histogram')
 
         self.pixels_value = None
         self.pixels_accuracy = None
@@ -121,7 +122,8 @@ class MainWindow(QWidget):
         self.layout.addWidget(self.threshold_slider, 5, 0, 1, 4)
         self.layout.addWidget(self.blur_slider, 5, 4, 1, 4)
         self.layout.addWidget(self.threshold_label, 6, 0, 1, 1, Qt.AlignCenter)
-        self.layout.addWidget(self.reset_button, 6, 1, 1, 2, Qt.AlignCenter)
+        self.layout.addWidget(self.reset_button, 6, 1, 1, 1, Qt.AlignCenter)
+        self.layout.addWidget(self.histogram_button, 6, 2, 1, 1, Qt.AlignCenter)
         self.layout.addWidget(self.blur_label, 6, 4, 1, 1, Qt.AlignCenter)
         self.layout.addWidget(self.save_button, 6, 5, 1, 1, Qt.AlignCenter)
         self.layout.addWidget(self.load_button, 6, 6, 1, 1, Qt.AlignCenter)
@@ -154,6 +156,9 @@ class MainWindow(QWidget):
         self.load_button.clicked.connect(lambda: self.load_image())
         self.recent_button.setToolTip('Open the last image to which segmentation was applied')
         self.recent_button.clicked.connect(self.open_recent)
+        self.histogram_button.setToolTip('Show the result image histogram')
+        self.histogram_button.clicked.connect(lambda: self.show_histogram(self.res_image))
+        self.histogram_button.setDisabled(True)
 
     def initialize_sliders(self):
         self.threshold_slider.setRange(0, 255)
@@ -186,36 +191,58 @@ class MainWindow(QWidget):
     def get_pixel(self, event):
         x = event.pos().x()
         y = event.pos().y()
-        pixels_accuracy = int(self.input_accuracy.text())
+        sign = None
+        if self.input_accuracy.text()[0] == '-' or self.input_accuracy.text()[0] == '+':
+            sign = self.input_accuracy.text()[0]
+            pixels_accuracy = int(self.input_accuracy.text()[1:])
+        else:
+            pixels_accuracy = int(self.input_accuracy.text())
         pixels_value = QColor(self.res_image.pixel(x, y)).value()
-        self.show_pixels(pixels_value, pixels_accuracy)
+        self.show_pixels(pixels_value, pixels_accuracy, constraint=sign)
         self.input_pixels.setText(str(pixels_value))
 
     def get_input_pixels_value(self):
+        sign = None
         try:
             pixels_value = int(self.input_pixels.text())
-            pixels_accuracy = int(self.input_accuracy.text())
+            if self.input_accuracy.text()[0] == '-' or self.input_accuracy.text()[0] == '+':
+                sign = self.input_accuracy.text()[0]
+                pixels_accuracy = int(self.input_accuracy.text()[1:])
+            else:
+                pixels_accuracy = int(self.input_accuracy.text())
+
             if pixels_value < 0 or pixels_value > 255:
                 print("You entered a number:", pixels_value, "that is out of range [0, 255]")
                 self.show_warning_window("You entered a number: " + str(pixels_value) + " that is out of range [0, 255]")
-            elif pixels_accuracy < 0 or pixels_accuracy > 255:
-                print("You entered a number:", pixels_accuracy, "that is out of range [0, 255]")
-                self.show_warning_window("You entered a number: " + str(pixels_accuracy) + " that is out of range [0, 255]")
+            elif pixels_accuracy > 255:
+                print("A number:", pixels_accuracy, "is too high! Maximum pixel's value is 255")
+                self.show_warning_window("A number: " + str(pixels_accuracy) + " that is out of range [0, 255]")
             else:
-                self.show_pixels(pixels_value, pixels_accuracy)
+                self.show_pixels(pixels_value, pixels_accuracy, constraint=sign)
         except ValueError as ve:
             print(type(ve), ve)
             self.show_warning_window("You entered a non-numeric value")
         except AssertionError as ae:
             print(type(ae), ae)
 
-    def show_pixels(self, value, accuracy):
+    def show_pixels(self, value, accuracy, constraint=None):
         counter = 0
         for x in range(self.image.height):
             for y in range(self.image.width):
-                if abs(self.image.blurred.item(x, y) - value) <= accuracy:
-                    self.image.blurred.itemset((x, y), 255)  # koloruje piksel na bialo
-                    counter += 1
+                if constraint == '+':
+                    if self.image.blurred.item(x, y) in range(value, value+accuracy+1, 1):
+                        self.image.blurred.itemset((x, y), 255)  # koloruje piksel na bialo
+                        counter += 1
+                elif constraint == '-':
+                    if self.image.blurred.item(x, y) in range(value-accuracy, value+1, 1):
+                        self.image.blurred.itemset((x, y), 255)  # koloruje piksel na bialo
+                        counter += 1
+                elif constraint == '-':
+                    pass
+                else:
+                    if abs(self.image.blurred.item(x, y) - value) <= accuracy:
+                        self.image.blurred.itemset((x, y), 255)  # koloruje piksel na bialo
+                        counter += 1
         self.update_image(self.res_image, self.image.blurred, self.result_image_label)
         self.image.blurred = change_blur(self.image.gray, self.current_blur)
         if counter == 0:
@@ -279,12 +306,14 @@ class MainWindow(QWidget):
         self.right_button.setDisabled(False)
         self.left_button.setDisabled(False)
         self.threshold_slider.setDisabled(False)
+        self.histogram_button.setDisabled(False)
 
     def disable_widgets(self):
         self.reset_button.setDisabled(True)
         self.right_button.setDisabled(True)
         self.left_button.setDisabled(True)
         self.threshold_slider.setDisabled(True)
+        self.histogram_button.setDisabled(True)
 
     def left_on_click(self):
         if self.displayed_segment_index > 0:
@@ -379,7 +408,7 @@ class MainWindow(QWidget):
 
     def open_recent(self):
         path = self.launch_settings.import_image()
-        self.load_image(path)
+        self.load_image(file_name=path)
 
     def show_warning_window(self, message):
         self.dialog_window.setText(message)
@@ -390,3 +419,11 @@ class MainWindow(QWidget):
 
     def forget_settings(self):
         self.launch_settings.delete_file()
+
+    def show_histogram(self, image):
+        hist_full = cv.calcHist([self.image.gray], [0], None, [256], [0, 256])
+        for mask in self.image.masked:
+            hist_mask = cv.calcHist([self.image.gray], [0], mask, [256], [0, 256])
+            plt.plot(hist_mask)
+        plt.plot(hist_full)
+        plt.show()
