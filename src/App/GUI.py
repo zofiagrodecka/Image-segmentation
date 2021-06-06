@@ -56,6 +56,7 @@ class MainWindow(QWidget):
         self.remember_button = QPushButton('Remember')
         self.forget_button = QPushButton('Forget')
         self.load_button = QPushButton('Open')
+        self.recent_button = QPushButton('Open recent')
 
         self.pixels_value = None
         self.pixels_accuracy = None
@@ -124,6 +125,7 @@ class MainWindow(QWidget):
         self.layout.addWidget(self.blur_label, 6, 4, 1, 1, Qt.AlignCenter)
         self.layout.addWidget(self.save_button, 6, 5, 1, 1, Qt.AlignCenter)
         self.layout.addWidget(self.load_button, 6, 6, 1, 1, Qt.AlignCenter)
+        self.layout.addWidget(self.recent_button, 6, 7, 1, 1, Qt.AlignCenter)
         self.setLayout(self.layout)
 
     def initialize_buttons(self):
@@ -149,7 +151,9 @@ class MainWindow(QWidget):
         self.forget_button.setToolTip('Forget remembered segments')
         self.forget_button.clicked.connect(self.forget_settings)
         self.load_button.setToolTip('Load new image')
-        self.load_button.clicked.connect(self.load_image)
+        self.load_button.clicked.connect(lambda: self.load_image())
+        self.recent_button.setToolTip('Open the last image to which segmentation was applied')
+        self.recent_button.clicked.connect(self.open_recent)
 
     def initialize_sliders(self):
         self.threshold_slider.setRange(0, 255)
@@ -262,6 +266,7 @@ class MainWindow(QWidget):
                                   + str(self.segments[self.displayed_segment_index + 1]) + ' ')
                 self.update_label(self.no_pixels_label, "")
                 self.enable_widgets()
+                self.launch_settings.export_image(self.image.full_path)
             else:
                 print("You entered a number:", error_value, "that is out of range [0, 255]")
                 self.show_warning_window("You entered a number: " + str(error_value) + " that is out of range [0, 255]")
@@ -357,8 +362,9 @@ class MainWindow(QWidget):
         elif f is not None and self.image.result is None:
             cv.imwrite(f.name, self.image.blurred)
 
-    def load_image(self):
-        file_name = tkinter.filedialog.askopenfilename(initialdir="../Photos")
+    def load_image(self, file_name=None):
+        if file_name is None:
+            file_name = tkinter.filedialog.askopenfilename(initialdir="../Photos")
         if file_name:
             self.image = Image(file_name, explore_files=True)
             self.qt_image = self.convert_cv_qt(self.image.gray, self.image_label)
@@ -370,6 +376,10 @@ class MainWindow(QWidget):
             self.change_blur_value(self.current_blur)
             self.disable_widgets()
             self.update_label(self.threshold_label, '')
+
+    def open_recent(self):
+        path = self.launch_settings.import_image()
+        self.load_image(path)
 
     def show_warning_window(self, message):
         self.dialog_window.setText(message)
