@@ -9,6 +9,8 @@ from src.App.segmentation import change_threshold, change_blur
 import tkinter.filedialog
 import cv2 as cv
 import numpy as np
+
+from src.Objects.Image import Image
 from src.Objects.JsonParser import JsonParser
 
 
@@ -53,6 +55,7 @@ class MainWindow(QWidget):
         self.save_button = QPushButton('Save')
         self.remember_button = QPushButton('Remember')
         self.forget_button = QPushButton('Forget')
+        self.load_button = QPushButton('Open')
 
         self.pixels_value = None
         self.pixels_accuracy = None
@@ -120,6 +123,7 @@ class MainWindow(QWidget):
         self.layout.addWidget(self.reset_button, 6, 1, 1, 2, Qt.AlignCenter)
         self.layout.addWidget(self.blur_label, 6, 4, 1, 1, Qt.AlignCenter)
         self.layout.addWidget(self.save_button, 6, 5, 1, 1, Qt.AlignCenter)
+        self.layout.addWidget(self.load_button, 6, 6, 1, 1, Qt.AlignCenter)
         self.setLayout(self.layout)
 
     def initialize_buttons(self):
@@ -144,13 +148,14 @@ class MainWindow(QWidget):
         self.remember_button.clicked.connect(self.remember_settings)
         self.forget_button.setToolTip('Forget remembered segments')
         self.forget_button.clicked.connect(self.forget_settings)
+        self.load_button.setToolTip('Load new image')
+        self.load_button.clicked.connect(self.load_image)
 
     def initialize_sliders(self):
         self.threshold_slider.setRange(0, 255)
         self.threshold_slider.setValue(0)
         self.threshold_slider.valueChanged[int].connect(self.change_threshold_value)
         self.threshold_slider.setDisabled(True)
-
         self.blur_slider.setRange(1, 50)
         self.blur_slider.setValue(self.current_blur)
         self.change_blur_value(self.current_blur)
@@ -270,6 +275,12 @@ class MainWindow(QWidget):
         self.left_button.setDisabled(False)
         self.threshold_slider.setDisabled(False)
 
+    def disable_widgets(self):
+        self.reset_button.setDisabled(True)
+        self.right_button.setDisabled(True)
+        self.left_button.setDisabled(True)
+        self.threshold_slider.setDisabled(True)
+
     def left_on_click(self):
         if self.displayed_segment_index > 0:
             self.displayed_segment_index -= 1
@@ -345,6 +356,20 @@ class MainWindow(QWidget):
             f.close()
         elif f is not None and self.image.result is None:
             cv.imwrite(f.name, self.image.blurred)
+
+    def load_image(self):
+        file_name = tkinter.filedialog.askopenfilename(initialdir="../Photos")
+        if file_name:
+            self.image = Image(file_name, explore_files=True)
+            self.qt_image = self.convert_cv_qt(self.image.gray, self.image_label)
+            self.res_image = self.convert_cv_qt(self.image.blurred, self.result_image_label)
+            qt_image_pixmap = QPixmap.fromImage(self.qt_image)
+            self.image_label.setPixmap(qt_image_pixmap)
+            res_image_pixmap = QPixmap.fromImage(self.res_image)
+            self.result_image_label.setPixmap(res_image_pixmap)
+            self.change_blur_value(self.current_blur)
+            self.disable_widgets()
+            self.update_label(self.threshold_label, '')
 
     def show_warning_window(self, message):
         self.dialog_window.setText(message)
