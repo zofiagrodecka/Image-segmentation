@@ -9,6 +9,8 @@ from src.App.segmentation import change_threshold, change_blur
 import tkinter.filedialog
 import cv2 as cv
 import numpy as np
+
+from src.Objects.EmptyStringException import EmptyStringException
 from src.Objects.Image import Image
 from src.Objects.JsonParser import JsonParser
 from matplotlib import pyplot as plt
@@ -211,34 +213,27 @@ class MainWindow(QWidget):
             else:
                 pixels_accuracy = int(self.input_accuracy.text())
 
-            if pixels_value < 0 or pixels_value > 255:
-                print("You entered a number:", pixels_value, "that is out of range [0, 255]")
-                self.show_warning_window("You entered a number: " + str(pixels_value) + " that is out of range [0, 255]")
-            elif pixels_accuracy > 255:
-                print("A number:", pixels_accuracy, "is too high! Maximum pixel's value is 255")
-                self.show_warning_window("A number: " + str(pixels_accuracy) + " that is out of range [0, 255]")
-            else:
-                self.show_pixels(pixels_value, pixels_accuracy, constraint=sign)
+            assert 0 <= pixels_value <= 255 and pixels_accuracy <= 255
+            self.show_pixels(pixels_value, pixels_accuracy, constraint=sign)
         except ValueError as ve:
             print(type(ve), ve)
             self.show_warning_window("You entered a non-numeric value")
         except AssertionError as ae:
-            print(type(ae), ae)
+            print(type(ae), "You entered a number that is out of range [0, 255]")
+            self.show_warning_window("You entered a value that is out of range [0, 255]")
 
     def show_pixels(self, value, accuracy, constraint=None):
         counter = 0
         for x in range(self.image.height):
             for y in range(self.image.width):
                 if constraint == '+':
-                    if self.image.blurred.item(x, y) in range(value, value+accuracy+1, 1):
+                    if value <= self.image.blurred.item(x, y) <= value + accuracy:
                         self.image.blurred.itemset((x, y), 255)  # koloruje piksel na bialo
                         counter += 1
                 elif constraint == '-':
-                    if self.image.blurred.item(x, y) in range(value-accuracy, value+1, 1):
+                    if value-accuracy <= self.image.blurred.item(x, y) <= value:
                         self.image.blurred.itemset((x, y), 255)  # koloruje piksel na bialo
                         counter += 1
-                elif constraint == '-':
-                    pass
                 else:
                     if abs(self.image.blurred.item(x, y) - value) <= accuracy:
                         self.image.blurred.itemset((x, y), 255)  # koloruje piksel na bialo
@@ -246,60 +241,52 @@ class MainWindow(QWidget):
         self.update_image(self.res_image, self.image.blurred, self.result_image_label)
         self.image.blurred = change_blur(self.image.gray, self.current_blur)
         if counter == 0:
-            self.update_label(self.no_pixels_label,
-                              "<font color='red'><b>No pixels of value: </b></font>" +
-                              str(value) +
-                              " +- " + str(accuracy))
+            self.update_label(self.no_pixels_label, "<font color='red'><b>No pixels of specified value! </b></font>")
             self.no_pixels_label.setStyleSheet("background-color: white")
         else:
             self.update_label(self.no_pixels_label, "")
 
     def get_input_segments(self):
-        num_in_range = True
         input_text = self.input.text()
         try:
             if len(self.input.text().split()) == 0:
-                self.show_warning_window("Enter non-blank segmentation values")
-                return
-            if input_text[0] == '0':
-                self.segments = [int(i) for i in input_text.split()]
-            else:
-                self.segments = [0] + [int(i) for i in input_text.split()]
+                raise EmptyStringException('Empty string')
 
+            self.segments = [int(i) for i in input_text.split()]
+            self.segments.sort()
+
+            if self.segments[0] != 0:
+                self.segments = [0] + self.segments
             if self.segments[len(self.segments)-1] != 255:
                 self.segments.append(255)
 
-            self.segments.sort()
-
-            for num in self.segments:
-                if num < 0 or num > 255:
-                    error_value = num
-                    num_in_range = False
-
-            if num_in_range:
-                self.image.set_divisions(self.segments)
-                self.image.apply_segmentation()
-                self.initial_image = copy.deepcopy(self.image)
-                self.displayed_segment_index = 0
-                if self.image.threshold_values[self.displayed_segment_index] is None:
-                    self.show_black_image()
-                else:
-                    self.update_image(self.qt_image, self.image.thresholded[self.displayed_segment_index], self.image_label)
-                    self.update_image(self.res_image, self.image.result, self.result_image_label)
-                    self.threshold_slider.setValue(self.image.threshold_values[self.displayed_segment_index])
-
-                self.update_label(self.segments_label,
-                                  'Tones in range: ' + str(self.segments[self.displayed_segment_index]) + ' - '
-                                  + str(self.segments[self.displayed_segment_index + 1]) + ' ')
-                self.update_label(self.no_pixels_label, "")
-                self.enable_widgets()
-                self.launch_settings.export_image(self.image.full_path)
+            assert all(0 <= value <= 255 for value in self.segments)
+            self.image.set_divisions(self.segments)
+            self.image.apply_segmentation()
+            self.initial_image = copy.deepcopy(self.image)
+            self.displayed_segment_index = 0
+            if self.image.threshold_values[self.displayed_segment_index] is None:
+                self.show_black_image()
             else:
-                print("You entered a number:", error_value, "that is out of range [0, 255]")
-                self.show_warning_window("You entered a number: " + str(error_value) + " that is out of range [0, 255]")
+                self.update_image(self.qt_image, self.image.thresholded[self.displayed_segment_index], self.image_label)
+                self.update_image(self.res_image, self.image.result, self.result_image_label)
+                self.threshold_slider.setValue(self.image.threshold_values[self.displayed_segment_index])
+
+            self.update_label(self.segments_label,
+                              'Tones in range: ' + str(self.segments[self.displayed_segment_index]) + ' - '
+                              + str(self.segments[self.displayed_segment_index + 1]) + ' ')
+            self.update_label(self.no_pixels_label, "")
+            self.enable_widgets()
+            self.launch_settings.export_image(self.image.full_path)
+        except EmptyStringException as ese:
+            print(type(ese), ese)
+            self.show_warning_window("Enter non-blank segmentation values")
         except ValueError as ve:
-            print(ve)
+            print(type(ve), ve)
             self.show_warning_window("You entered a non-numeric value in: " + self.input.text())
+        except AssertionError as ae:
+            print(type(ae), "You entered a value that is out of range [0, 255]")
+            self.show_warning_window("You entered a value that is out of range [0, 255]")
 
     def enable_widgets(self):
         self.reset_button.setDisabled(False)
@@ -350,8 +337,7 @@ class MainWindow(QWidget):
         self.update_image(self.qt_image, black_image, self.image_label)
         self.threshold_slider.setDisabled(True)
         self.reset_button.setDisabled(True)
-        self.update_label(self.no_image_label,
-                          "<font color='white'><b>No pixels with value in this range</b></font>")
+        self.update_label(self.no_image_label, "<font color='white'><b>No pixels with value in this range</b></font>")
 
     def change_threshold_value(self, value):
         before_change = self.image.masked[self.displayed_segment_index]
@@ -385,16 +371,24 @@ class MainWindow(QWidget):
 
     def save_result(self):
         f = tkinter.filedialog.asksaveasfile(mode='wb', defaultextension='png', initialdir="../Results")
-        if f is not None and self.image.result is not None:
-            cv.imwrite(f.name, self.image.result, [cv.IMWRITE_PNG_BILEVEL, 1])
-            f.close()
-        elif f is not None and self.image.result is None:
-            cv.imwrite(f.name, self.image.blurred)
+        try:
+            if f is None:
+                raise EmptyStringException('No file name given')
+            if f is not None and self.image.result is not None:
+                cv.imwrite(f.name, self.image.result, [cv.IMWRITE_PNG_BILEVEL, 1])
+                f.close()
+            elif self.image.result is None:
+                cv.imwrite(f.name, self.image.blurred)
+        except EmptyStringException as exception:
+            print(type(exception), exception)
+            self.show_warning_window("You have to type file name to save the image")
 
     def load_image(self, file_name=None):
         if file_name is None:
             file_name = tkinter.filedialog.askopenfilename(initialdir="../Photos")
-        if file_name:
+        try:
+            if file_name is None:
+                raise EmptyStringException('No file name given')
             self.image = Image(file_name, explore_files=True)
             self.qt_image = self.convert_cv_qt(self.image.gray, self.image_label)
             self.res_image = self.convert_cv_qt(self.image.blurred, self.result_image_label)
@@ -405,10 +399,17 @@ class MainWindow(QWidget):
             self.change_blur_value(self.current_blur)
             self.disable_widgets()
             self.update_label(self.threshold_label, '')
+        except EmptyStringException as exception:
+            print(type(exception), exception)
+            self.show_warning_window("You have to choose image to open it")
 
     def open_recent(self):
-        path = self.launch_settings.import_image()
-        self.load_image(file_name=path)
+        try:
+            path = self.launch_settings.import_image()
+            self.load_image(file_name=path)
+        except IOError as error:
+            print(type(error), error)
+            self.show_warning_window("Nothing to open. You have not applied segmentation to any image before.")
 
     def show_warning_window(self, message):
         self.dialog_window.setText(message)
