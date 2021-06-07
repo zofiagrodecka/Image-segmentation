@@ -1,10 +1,6 @@
-# Author: Jan Prokop, Zofia Grodecka
-# OS: WINDOWS
-
 import cv2 as cv
 import numpy as np
 import sys
-import pathlib
 from copy import deepcopy
 from PIL import Image
 from numpy import ma

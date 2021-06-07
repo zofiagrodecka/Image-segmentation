@@ -3,13 +3,10 @@ from PyQt5.QtWidgets import QWidget, QLabel, QGridLayout, QToolButton, QSlider, 
     QDesktopWidget, QDialog, QMessageBox
 from PyQt5.QtGui import QPixmap, QFont, QColor
 from PyQt5.QtCore import Qt
-import copy
-
-#from src.App.segmentation import change_threshold, change_blur
-import tkinter.filedialog
+from copy import deepcopy
+from tkinter import filedialog
 import cv2 as cv
 import numpy as np
-
 from src.App.SegmentationManager import SegmentationManager
 from src.Objects.EmptyStringException import EmptyStringException
 from src.Objects.Image import Image
@@ -265,7 +262,7 @@ class MainWindow(QWidget):
             assert all(0 <= value <= 255 for value in self.segments)
             self.image.set_divisions(self.segments)
             self.image.apply_segmentation()
-            self.initial_image = copy.deepcopy(self.image)
+            self.initial_image = deepcopy(self.image)
             self.displayed_segment_index = 0
             if self.image.threshold_values[self.displayed_segment_index] is None:
                 self.show_black_image()
@@ -372,7 +369,7 @@ class MainWindow(QWidget):
         self.threshold_slider.setValue(self.image.threshold_values[self.displayed_segment_index])
 
     def save_result(self):
-        f = tkinter.filedialog.asksaveasfile(mode='wb', defaultextension='png', initialdir="../Results")
+        f = filedialog.asksaveasfile(mode='wb', defaultextension='png', initialdir="../Results")
         try:
             if f is None:
                 raise EmptyStringException('No file name given')
@@ -387,7 +384,7 @@ class MainWindow(QWidget):
 
     def load_image(self, file_name=None):
         if file_name is None:
-            file_name = tkinter.filedialog.askopenfilename(initialdir="../Photos")
+            file_name = filedialog.askopenfilename(initialdir="../Photos")
         try:
             if file_name is None:
                 raise EmptyStringException('No file name given')

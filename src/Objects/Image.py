@@ -1,4 +1,3 @@
-import cv2 as cv
 from src.App.SegmentationManager import *
 
 
