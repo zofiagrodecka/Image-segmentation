@@ -1,17 +1,14 @@
 import cv2 as cv
 import numpy as np
-import sys
 from copy import deepcopy
 from PIL import Image
 from numpy import ma
 from skimage.filters import threshold_otsu
-import tkinter.filedialog
-from tkinter import Tk
 
 
 class SegmentationManager:
     def __init__(self):
-        self.BLUR_PARAM = 0  # pole prywatne (name mangling)
+        self.BLUR_PARAM = 0
 
     @staticmethod
     def converting_to_gray_scale(image, show=False):
@@ -48,7 +45,7 @@ class SegmentationManager:
         tones = [[] for _ in range(len(division) - 1)]
         for y in range(image.shape[1]):
             for x in range(image.shape[0]):
-                intensity = image[x, y]
+                intensity = image.item(x, y)
                 for i in range(1, len(division)):
                     if division[i - 1] <= intensity <= division[i]:
                         tones[i - 1].append([x, y])
@@ -83,7 +80,7 @@ class SegmentationManager:
             for (x, y) in tones[i]:
                 mask[x, y] = 255
             masked_img = cv.bitwise_and(gray_image, gray_image, mask=mask)
-            thr_masked = ma.masked_array(masked_img, mask == 0)  # w masce z np. sa 1 tam gdzie sa 0 (czern) w mask
+            thr_masked = ma.masked_array(masked_img, mask == 0)
             if thr_masked.compressed().shape[0] != 0:
                 value = threshold_otsu(thr_masked.compressed())
                 threshold_values.append(value)
@@ -145,57 +142,3 @@ class SegmentationManager:
     @staticmethod
     def convert_from_array(image):
         return Image.fromarray(image.astype(np.uint8))
-
-
-if __name__ == "__main__":
-
-    if len(sys.argv) < 2:
-        sys.exit("This program needs arguments: Photo_FILEname(obligatory) or \"explore\", [Thresholds](optional)")
-
-    if sys.argv[1] == "explore":
-        Tk().withdraw()
-        file_name = tkinter.filedialog.askopenfilename(initialdir="./")
-    else:
-        file_name = sys.argv[1]
-
-    # Getting array of divisions
-    gray_scale_div = []
-    for i in range(2, len(sys.argv)):
-        parameter = sys.argv[i]
-        gray_scale_div.append(int(parameter))
-
-    # Converting image
-
-    manager = SegmentationManager()
-
-    image = cv.imread(file_name)
-
-    gray = manager.converting_to_gray_scale(image, show=True)
-
-    gaussed = manager.gaussian_blurring(gray, show=True)
-
-    Tones = manager.split_into_tones(gaussed, brackets=gray_scale_div, show=True, has_beginning=True)
-
-    masked, thresholded_values, thresholded, empty = manager.apply_threshold(gaussed, gray, Tones)
-
-    result = manager.merge_pictures(thresholded, show=True)
-
-    cv.waitKey()
-    cv.destroyAllWindows()
-
-    # Saving result image
-    usr_wants_to_save = "_"
-    while usr_wants_to_save.upper() != "Y" or usr_wants_to_save.upper() != "N":
-        usr_wants_to_save = input("Do you want to save the result? [Y/n]:\n> ")
-
-        if usr_wants_to_save.upper() == "Y":
-            # result_file_name = input("Put result file name:\n> ")
-            # cv.imwrite(f"Results/{result_file_name}", result, [cv.IMWRITE_PNG_BILEVEL, 1])
-            f = tkinter.filedialog.asksaveasfile(mode='w', defaultextension='bmp', initialdir="./")
-            cv.imwrite(f.name, result, [cv.IMWRITE_PNG_BILEVEL, 1])
-            f.close()
-            break
-        elif usr_wants_to_save.upper() == "N":
-            break
-        else:
-            print("Wrong response character!")

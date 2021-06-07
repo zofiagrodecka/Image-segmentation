@@ -1,6 +1,6 @@
 from PyQt5 import QtGui
 from PyQt5.QtWidgets import QWidget, QLabel, QGridLayout, QToolButton, QSlider, QPushButton, QApplication, QLineEdit, \
-    QDesktopWidget, QDialog, QMessageBox
+    QMessageBox
 from PyQt5.QtGui import QPixmap, QFont, QColor
 from PyQt5.QtCore import Qt
 from copy import deepcopy
@@ -369,7 +369,7 @@ class MainWindow(QWidget):
         self.threshold_slider.setValue(self.image.threshold_values[self.displayed_segment_index])
 
     def save_result(self):
-        f = filedialog.asksaveasfile(mode='wb', defaultextension='png', initialdir="../Results")
+        f = filedialog.asksaveasfile(mode='wb', defaultextension='png', initialdir="./Results")
         try:
             if f is None:
                 raise EmptyStringException('No file name given')
@@ -384,9 +384,9 @@ class MainWindow(QWidget):
 
     def load_image(self, file_name=None):
         if file_name is None:
-            file_name = filedialog.askopenfilename(initialdir="../Photos")
+            file_name = filedialog.askopenfilename(initialdir="./Photos")
         try:
-            if file_name is None:
+            if not file_name:
                 raise EmptyStringException('No file name given')
             self.image = Image(file_name, explore_files=True)
             self.qt_image = self.convert_cv_qt(self.image.gray, self.image_label)
@@ -398,6 +398,8 @@ class MainWindow(QWidget):
             self.change_blur_value(self.current_blur)
             self.disable_widgets()
             self.update_label(self.threshold_label, '')
+            self.update_label(self.no_image_label, '')
+            self.update_label(self.no_pixels_label, '')
         except EmptyStringException as exception:
             print(type(exception), exception)
             self.show_warning_window("You have to choose image to open it")
@@ -422,8 +424,11 @@ class MainWindow(QWidget):
 
     def show_histogram(self, image):
         hist_full = cv.calcHist([self.image.gray], [0], None, [256], [0, 256])
+        i = 0
         for mask in self.image.masked:
             hist_mask = cv.calcHist([self.image.gray], [0], mask, [256], [0, 256])
-            plt.plot(hist_mask)
-        plt.plot(hist_full)
+            plt.plot(hist_mask, label=f'Range: {self.segments[i]} - {self.segments[i+1]}')
+            i += 1
+        plt.plot(hist_full, label='Original image', color='black')
+        plt.legend()
         plt.show()
