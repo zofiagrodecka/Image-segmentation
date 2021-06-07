@@ -5,11 +5,12 @@ from PyQt5.QtGui import QPixmap, QFont, QColor
 from PyQt5.QtCore import Qt
 import copy
 
-from src.App.segmentation import change_threshold, change_blur
+#from src.App.segmentation import change_threshold, change_blur
 import tkinter.filedialog
 import cv2 as cv
 import numpy as np
 
+from src.App.SegmentationManager import SegmentationManager
 from src.Objects.EmptyStringException import EmptyStringException
 from src.Objects.Image import Image
 from src.Objects.JsonParser import JsonParser
@@ -72,6 +73,7 @@ class MainWindow(QWidget):
         self.initial_image = None
         self.qt_image = self.convert_cv_qt(self.image.gray, self.image_label)
         self.res_image = self.convert_cv_qt(self.image.blurred, self.result_image_label)
+        self.manager = SegmentationManager()
 
         self.threshold_slider = QSlider(Qt.Horizontal)
         self.blur_slider = QSlider(Qt.Horizontal)
@@ -239,7 +241,7 @@ class MainWindow(QWidget):
                         self.image.blurred.itemset((x, y), 255)  # koloruje piksel na bialo
                         counter += 1
         self.update_image(self.res_image, self.image.blurred, self.result_image_label)
-        self.image.blurred = change_blur(self.image.gray, self.current_blur)
+        self.image.blurred = self.manager.change_blur(self.image.gray, self.current_blur)
         if counter == 0:
             self.update_label(self.no_pixels_label, "<font color='red'><b>No pixels of specified value! </b></font>")
             self.no_pixels_label.setStyleSheet("background-color: white")
@@ -341,7 +343,7 @@ class MainWindow(QWidget):
 
     def change_threshold_value(self, value):
         before_change = self.image.masked[self.displayed_segment_index]
-        changed_image = change_threshold(before_change, value)
+        changed_image = self.manager.change_threshold(before_change, value)
         self.image.thresholded[self.displayed_segment_index] = changed_image
         self.update_image(self.qt_image, self.image.thresholded[self.displayed_segment_index], self.image_label)
         self.image.threshold_values[self.displayed_segment_index] = value
@@ -351,7 +353,7 @@ class MainWindow(QWidget):
 
     def change_blur_value(self, value):
         self.current_blur = value
-        self.image.blurred = change_blur(self.image.gray, value)
+        self.image.blurred = self.manager.change_blur(self.image.gray, value)
         self.res_image = self.convert_cv_qt(self.image.blurred, self.result_image_label)
         self.result_image_label.setPixmap(QPixmap.fromImage(self.res_image))
         self.update_label(self.blur_label, 'Blur value: ' + str(value))

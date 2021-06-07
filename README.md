@@ -1,6 +1,7 @@
 # Segmentacja obrazu na zadane obszary tonalne i stosowanie do nich osobnych wartości progowania automatycznego z manualną korektą.
 
 Autorzy: Zofia Grodecka, Jan Prokop
+OS: WINDOWS
 
 Program ma być aplikacją okienkową pozwalającą na:
 - Import plików (wybranie plików ze skanami, które mają zostać obrobione)
@@ -29,5 +30,5 @@ Tydzień 5-7: (5 laby)
 - Dodanie wygodnego sposobu wybierania plików i miejsca na eksport. | Jasiek
 
 Tydzień 8+:
-- Pewnie czegoś nie zrobimy na czas, więc to jest bufor :D
+- Pewnie czegoś nie zrobimy na czas, więc to jest bufor
 - Poprawa programu zależnie od feedbacku
