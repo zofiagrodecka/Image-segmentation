@@ -1,5 +1,5 @@
 from json import dump, load
-from os import listdir
+from os import listdir, remove
 
 
 class JsonParser:
@@ -36,4 +36,5 @@ class JsonParser:
         return dictionary["Image"]
 
     def delete_file(self):
-        os.remove(self.filename)
+        if self.filename in listdir("."):
+            remove(self.filename)

@@ -26,7 +26,7 @@ class Image:
 
     @staticmethod
     def set_path(file_name):
-        file_path = '..' + "\\Photos\\" + file_name
+        file_path = '.' + "\\Photos\\" + file_name
         return file_path
 
     def set_divisions(self, divisions):
