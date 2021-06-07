@@ -7,8 +7,8 @@ from tkinter import Tk, filedialog
 if __name__ == "__main__":
 
     Tk().withdraw()
-    file_name = filedialog.askopenfilename(initialdir="../Photos")
-    if len(file_name) == 0:
+    file_name = filedialog.askopenfilename(initialdir="./Photos")
+    if not file_name:
         sys.exit("You have to choose Image to proceed")
     image = Image(file_name, explore_files=True)
 
